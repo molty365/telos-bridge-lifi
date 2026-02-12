@@ -9,7 +9,7 @@ export function Header() {
         <img src="/telos-bridge-lifi/telos-logo.svg" alt="Telos" className="w-9 h-9" />
         <div>
           <h1 className="text-lg font-bold text-white tracking-tight">Telos Bridge</h1>
-          <p className="text-[10px] text-gray-500 -mt-0.5">LiFi + LayerZero OFT</p>
+          <p className="text-[10px] text-gray-500 -mt-0.5">LayerZero OFT</p>
         </div>
       </div>
       <ConnectButton />

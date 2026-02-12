@@ -1,6 +1,3 @@
-// Static fallback list — overridden at runtime by LiFi's actual chain/token list
-export const PRIORITY_CHAINS = [40, 1, 8453, 56, 42161, 137, 43114, 10] // Telos first
-
 export interface ChainInfo {
   id: number
   name: string
@@ -8,21 +5,15 @@ export interface ChainInfo {
   nativeCurrency: string
 }
 
-// Will be populated dynamically from LiFi
-export let dynamicChains: ChainInfo[] = []
-export let dynamicTokensByChain: Record<number, Array<{ symbol: string; address: string; decimals: number; logoURI?: string; name?: string }>> = {}
+// Only chains with TLOS OFT contracts
+export const SUPPORTED_CHAINS: ChainInfo[] = [
+  { id: 40, name: 'Telos', icon: '/telos-bridge-lifi/chains/telos.svg', nativeCurrency: 'TLOS' },
+  { id: 1, name: 'Ethereum', icon: '/telos-bridge-lifi/chains/ethereum.png', nativeCurrency: 'ETH' },
+  { id: 8453, name: 'Base', icon: '/telos-bridge-lifi/chains/base.png', nativeCurrency: 'ETH' },
+  { id: 56, name: 'BSC', icon: '/telos-bridge-lifi/chains/bsc.png', nativeCurrency: 'BNB' },
+  { id: 42161, name: 'Arbitrum', icon: '/telos-bridge-lifi/chains/arbitrum.png', nativeCurrency: 'ETH' },
+  { id: 137, name: 'Polygon', icon: '/telos-bridge-lifi/chains/polygon.png', nativeCurrency: 'MATIC' },
+  { id: 43114, name: 'Avalanche', icon: '/telos-bridge-lifi/chains/avalanche.png', nativeCurrency: 'AVAX' },
+]
 
-export function setDynamicChains(chains: ChainInfo[]) {
-  // Sort: priority chains first, then alphabetical
-  const priority = new Map(PRIORITY_CHAINS.map((id, i) => [id, i]))
-  dynamicChains = chains.sort((a, b) => {
-    const pa = priority.get(a.id) ?? 999
-    const pb = priority.get(b.id) ?? 999
-    if (pa !== pb) return pa - pb
-    return a.name.localeCompare(b.name)
-  })
-}
-
-export function setDynamicTokens(tokens: Record<number, any[]>) {
-  dynamicTokensByChain = tokens
-}
+export const CHAIN_MAP = new Map(SUPPORTED_CHAINS.map(c => [c.id, c]))
