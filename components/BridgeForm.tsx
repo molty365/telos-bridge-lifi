@@ -167,35 +167,35 @@ export function BridgeForm() {
         </div>
 
         {/* Chain selector row */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 bg-[#1a1a28] rounded-xl p-4 hover:bg-[#1e1e30] transition-colors">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-3 sm:p-4 hover:bg-[#1e1e30] transition-colors">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">From</p>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0"
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0"
                 style={{ background: `${CHAIN_COLORS[fromChain] || '#666'}20` }}>
-                {chainIcon(fromChain) && <img src={chainIcon(fromChain)} alt="" className="w-7 h-7 rounded-full" />}
+                {chainIcon(fromChain) && <img src={chainIcon(fromChain)} alt="" className="w-6 h-6 sm:w-7 sm:h-7 rounded-full" />}
               </div>
               <select value={fromChain} onChange={e => handleFromChain(Number(e.target.value))}
-                className="bg-transparent text-white font-semibold text-base outline-none cursor-pointer flex-1 min-w-0">
+                className="bg-transparent text-white font-semibold text-sm sm:text-base outline-none cursor-pointer flex-1 min-w-0 truncate">
                 {SUPPORTED_CHAINS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
           </div>
 
           <button onClick={swap}
-            className="w-10 h-10 rounded-full bg-[#1a1a28] border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 transition-all text-gray-400 hover:text-telos-cyan shrink-0">
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M10 2L13 5L10 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 5H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M6 14L3 11L6 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M13 11H3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1a1a28] border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 transition-all text-gray-400 hover:text-telos-cyan shrink-0">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 2L13 5L10 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 5H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M6 14L3 11L6 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M13 11H3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
 
-          <div className="flex-1 bg-[#1a1a28] rounded-xl p-4 hover:bg-[#1e1e30] transition-colors">
+          <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-3 sm:p-4 hover:bg-[#1e1e30] transition-colors">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">To</p>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0"
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0"
                 style={{ background: `${CHAIN_COLORS[toChain] || '#666'}20` }}>
-                {chainIcon(toChain) && <img src={chainIcon(toChain)} alt="" className="w-7 h-7 rounded-full" />}
+                {chainIcon(toChain) && <img src={chainIcon(toChain)} alt="" className="w-6 h-6 sm:w-7 sm:h-7 rounded-full" />}
               </div>
               <select value={toChain} onChange={e => handleToChain(Number(e.target.value))}
-                className="bg-transparent text-white font-semibold text-base outline-none cursor-pointer flex-1 min-w-0">
+                className="bg-transparent text-white font-semibold text-sm sm:text-base outline-none cursor-pointer flex-1 min-w-0 truncate">
                 {SUPPORTED_CHAINS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
@@ -207,7 +207,7 @@ export function BridgeForm() {
           <div className="flex items-center justify-between">
             <input type="number" inputMode="decimal" placeholder="0.00" value={amount}
               onChange={e => setAmount(e.target.value)}
-              className="flex-1 bg-transparent text-4xl font-light text-white outline-none placeholder-gray-600 min-w-0 tabular-nums" />
+              className="flex-1 bg-transparent text-2xl sm:text-4xl font-light text-white outline-none placeholder-gray-600 min-w-0 tabular-nums" />
             <div className="flex items-center gap-2.5 bg-[#252535] border border-gray-700/50 rounded-xl px-4 py-3 ml-4 relative">
               {TOKEN_LOGOS[token] && <img src={TOKEN_LOGOS[token]} alt="" className="w-6 h-6 rounded-full" />}
               {tokenList.length > 1 ? (
@@ -242,11 +242,11 @@ export function BridgeForm() {
               {quoting ? (
                 <div className="skeleton h-10 w-40" />
               ) : (
-                <span className="text-3xl font-light text-telos-cyan tabular-nums">
+                <span className="text-xl sm:text-3xl font-light text-telos-cyan tabular-nums">
                   {v2Quote ? v2Quote.amountReceivedFormatted : amount}
                 </span>
               )}
-              <div className="flex items-center gap-2 text-base text-gray-400 font-medium">
+              <div className="flex items-center gap-2 text-xs sm:text-base text-gray-400 font-medium">
                 {TOKEN_LOGOS[token] && <img src={TOKEN_LOGOS[token]} alt="" className="w-5 h-5 rounded-full" />}
                 {token} on {chainName(toChain)}
               </div>
