@@ -1,25 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAccount, useBalance, useSwitchChain, useWalletClient, usePublicClient } from 'wagmi'
 import { dynamicChains, type ChainInfo } from '@/lib/chains'
 import { initLiFi, isChainAvailable, fetchQuote, getTokensForChain, getTokenAddress, executeBridge } from '@/lib/lifi'
 import { isTlosOftRoute, quoteOftSend, executeOftSend, type OftQuoteResult } from '@/lib/oft'
 
-const CHAIN_LOGOS: Record<number, string> = {
-  1: '/telos-bridge-lifi/chains/ethereum.svg',
-  40: '/telos-bridge-lifi/telos-logo.png',
-  8453: '/telos-bridge-lifi/chains/base.svg',
-  56: '/telos-bridge-lifi/chains/bsc.svg',
-  42161: '/telos-bridge-lifi/chains/arbitrum.svg',
-  137: '/telos-bridge-lifi/chains/polygon.svg',
-  43114: '/telos-bridge-lifi/chains/avalanche.svg',
-  10: '/telos-bridge-lifi/chains/optimism.svg',
-}
-
-const CHAIN_COLORS: Record<number, string> = {
-  1: '#627EEA', 40: '#00F2FE', 8453: '#0052FF', 56: '#F0B90B',
-  42161: '#28A0F0', 137: '#8247E5', 43114: '#E84142', 10: '#FF0420',
+const CHAIN_ICONS: Record<number, string> = {
+  1: '🔷', 40: '🟢', 8453: '🔵', 56: '🟡', 42161: '🔶', 137: '🟣', 43114: '🔺', 10: '🔴',
 }
 
 export function BridgeForm() {
@@ -34,6 +22,8 @@ export function BridgeForm() {
   const [amount, setAmount] = useState('')
   const [slippage, setSlippage] = useState(0.5)
   const [showSettings, setShowSettings] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
+  const [swapRotation, setSwapRotation] = useState(0)
 
   const [quoting, setQuoting] = useState(false)
   const [quote, setQuote] = useState<any>(null)
@@ -44,12 +34,14 @@ export function BridgeForm() {
   const [fromTokenAddress, setFromTokenAddress] = useState<string | undefined>(undefined)
   const [oftQuote, setOftQuote] = useState<OftQuoteResult | null>(null)
   const publicClient = usePublicClient({ chainId: fromChain })
+  const quoteTimeout = useRef<NodeJS.Timeout | null>(null)
 
-  // Bridge same token across chains (no swaps)
+  // Bridge same token across chains
   const fromToken = token
   const toToken = token
-
   const isOftRoute = isTlosOftRoute(fromChain, toChain, fromToken, toToken)
+  const hasQuote = !!(quote || oftQuote)
+  const wrongNetwork = address && walletChainId !== fromChain
 
   useEffect(() => {
     if (!ready) return
@@ -83,17 +75,13 @@ export function BridgeForm() {
     })
   }, [fromChain, ready])
 
-  const clearQuote = () => { setQuote(null); setOftQuote(null); setBridgeStatus(null) }
-
-  const handleQuote = useCallback(async () => {
-    if (!amount || parseFloat(amount) <= 0) return
-    setQuoting(true); setError(null); clearQuote()
+  const doQuote = useCallback(async () => {
+    if (!amount || parseFloat(amount) <= 0 || !ready) return
+    setQuoting(true); setError(null); setQuote(null); setOftQuote(null)
     try {
       if (isOftRoute && publicClient) {
-        const oq = await quoteOftSend(
-          publicClient, fromChain, toChain, amount,
-          address || '0x0000000000000000000000000000000000000001' as `0x${string}`,
-        )
+        const oq = await quoteOftSend(publicClient, fromChain, toChain, amount,
+          address || '0x0000000000000000000000000000000000000001' as `0x${string}`)
         setOftQuote(oq)
       } else {
         const q = await fetchQuote({
@@ -106,15 +94,22 @@ export function BridgeForm() {
     } catch (e: any) {
       const msg = e.message || 'Failed to get quote'
       if (msg.includes('No available quotes') || msg.includes('404')) {
-        setError(`No route available for ${fromToken} on this path.`)
-      } else {
-        setError(msg)
-      }
+        setError(`No route for ${fromToken} on this path.`)
+      } else { setError(msg) }
     } finally { setQuoting(false) }
-  }, [fromChain, toChain, fromToken, toToken, amount, slippage, address, isOftRoute, publicClient])
+  }, [fromChain, toChain, fromToken, toToken, amount, slippage, address, isOftRoute, publicClient, ready])
+
+  // Auto-quote with debounce
+  useEffect(() => {
+    if (quoteTimeout.current) clearTimeout(quoteTimeout.current)
+    setQuote(null); setOftQuote(null)
+    if (!amount || parseFloat(amount) <= 0 || !ready) return
+    quoteTimeout.current = setTimeout(() => doQuote(), 800)
+    return () => { if (quoteTimeout.current) clearTimeout(quoteTimeout.current) }
+  }, [amount, fromChain, toChain, token, slippage, ready])
 
   const handleBridge = useCallback(async () => {
-    if (!(quote || oftQuote) || !address || !walletClient) {
+    if (!hasQuote || !address || !walletClient) {
       setError(!address ? 'Connect your wallet first' : 'Get a quote first')
       return
     }
@@ -122,10 +117,10 @@ export function BridgeForm() {
       setError(`Insufficient ${fromToken} balance`)
       return
     }
-    setBridging(true); setError(null); setBridgeStatus('Preparing...')
+    setBridging(true); setError(null); setBridgeStatus('Preparing…')
     try {
       if (walletChainId !== fromChain) {
-        setBridgeStatus('Switching network...')
+        setBridgeStatus('Switching network…')
         await switchChainAsync({ chainId: fromChain })
       }
       if (oftQuote && publicClient) {
@@ -133,7 +128,7 @@ export function BridgeForm() {
           address, address, slippage, (s: string) => setBridgeStatus(s))
         setOftQuote(null)
       } else if (quote) {
-        setBridgeStatus('Confirm in wallet...')
+        setBridgeStatus('Confirm in wallet…')
         await executeBridge(quote.raw, (s: string) => setBridgeStatus(s))
         setQuote(null)
       }
@@ -147,9 +142,10 @@ export function BridgeForm() {
   }, [quote, oftQuote, address, walletClient, publicClient, walletChainId, fromChain, toChain, switchChainAsync, amount, slippage, displayBalance, fromToken])
 
   const swap = () => {
+    setSwapRotation(r => r + 180)
     const fc = fromChain
     setFromChain(toChain); setToChain(fc)
-    clearQuote()
+    setQuote(null); setOftQuote(null); setBridgeStatus(null)
   }
 
   const fmt = (raw: string, dec: number) => {
@@ -157,226 +153,241 @@ export function BridgeForm() {
     return n < 0.001 ? n.toExponential(2) : n.toFixed(Math.min(6, dec))
   }
 
-  const handleMax = () => {
-    if (displayBalance) { setAmount(displayBalance.formatted); clearQuote() }
-  }
-
+  const handleMax = () => { if (displayBalance) setAmount(displayBalance.formatted) }
+  const handleHalf = () => { if (displayBalance) setAmount((parseFloat(displayBalance.formatted) / 2).toString()) }
   const chainName = (id: number) => chains.find(c => c.id === id)?.name || `Chain ${id}`
   const telosUnavailable = ready && !isChainAvailable(40) && (fromChain === 40 || toChain === 40)
 
+  const Spinner = () => (
+    <svg className="w-4 h-4 animate-spin-slow" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" opacity="0.3"/>
+      <path d="M14 8a6 6 0 00-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  )
+
   return (
-    <div className="space-y-3">
-      <div className="bg-[#12121a]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
+    <div className="space-y-3 w-full max-w-[440px] mx-auto">
+      <div className="bg-[#11111b]/90 backdrop-blur-2xl border border-white/[0.04] rounded-2xl card-glow overflow-hidden">
 
-        {/* Chain selector row */}
-        <div className="flex items-center border-b border-white/[0.04]">
-          <button className="flex-1 flex items-center gap-3 p-4 hover:bg-white/[0.02] transition-colors text-left"
-            onClick={() => {/* could open chain modal */}}>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden"
-              style={{ background: `${CHAIN_COLORS[fromChain] || '#666'}20` }}>
-              {CHAIN_LOGOS[fromChain]
-                ? <img src={CHAIN_LOGOS[fromChain]} alt="" className="w-5 h-5" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                : <span className="text-sm">⬡</span>}
-            </div>
-            <div>
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest">From</p>
-              <select value={fromChain} onChange={e => { setFromChain(Number(e.target.value)); clearQuote() }}
-                className="bg-transparent text-white font-semibold text-sm outline-none cursor-pointer -ml-1">
-                {chains.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-          </button>
-
-          <button onClick={swap}
-            className="w-10 h-10 rounded-full bg-[#1a1a28] border border-white/[0.06] flex items-center justify-center hover:border-telos-cyan/40 hover:bg-telos-cyan/5 transition-all text-gray-500 hover:text-telos-cyan shrink-0 hover:rotate-180 duration-300">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 2L13 5L10 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 5H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M6 14L3 11L6 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M13 11H3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          </button>
-
-          <button className="flex-1 flex items-center gap-3 p-4 hover:bg-white/[0.02] transition-colors text-right justify-end"
-            onClick={() => {/* could open chain modal */}}>
-            <div className="text-right">
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest">To</p>
-              <select value={toChain} onChange={e => { setToChain(Number(e.target.value)); clearQuote() }}
-                className="bg-transparent text-white font-semibold text-sm outline-none cursor-pointer text-right">
-                {chains.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden"
-              style={{ background: `${CHAIN_COLORS[toChain] || '#666'}20` }}>
-              {CHAIN_LOGOS[toChain]
-                ? <img src={CHAIN_LOGOS[toChain]} alt="" className="w-5 h-5" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                : <span className="text-sm">⬡</span>}
-            </div>
+        {/* Card header */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-2">
+          <span className="text-sm font-semibold text-white/90">Bridge</span>
+          <button onClick={() => setShowSettings(!showSettings)}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all text-sm
+              ${showSettings ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}>
+            ⚙️
           </button>
         </div>
 
-        {/* Amount + token */}
-        <div className="p-5 space-y-4">
-          <div className="space-y-2">
-            <div className="flex items-end gap-3">
-              <input type="number" placeholder="0" value={amount}
-                onChange={e => { setAmount(e.target.value); clearQuote() }}
-                className="flex-1 bg-transparent text-[40px] font-extralight text-white outline-none placeholder-gray-700 min-w-0 leading-none" />
-              <select value={token} onChange={e => { setToken(e.target.value); clearQuote() }}
-                className="bg-white/[0.06] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm font-semibold outline-none cursor-pointer hover:bg-white/[0.08] transition-colors mb-1">
-                {fromTokens.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+        {/* Settings */}
+        {showSettings && (
+          <div className="mx-5 mb-3 bg-[#0c0c16] rounded-xl p-3.5 border border-white/[0.04]">
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[11px] text-gray-400 font-medium">Slippage Tolerance</span>
+              <span className="text-[11px] text-telos-cyan font-medium">{slippage}%</span>
             </div>
-
-            {address && displayBalance ? (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">
-                  {parseFloat(displayBalance.formatted).toFixed(4)} {displayBalance.symbol} available
-                </span>
-                <button onClick={handleMax}
-                  className="text-[10px] font-bold uppercase tracking-wider text-telos-cyan/60 hover:text-telos-cyan transition-colors px-2 py-0.5 rounded bg-telos-cyan/5 hover:bg-telos-cyan/10">
-                  Max
+            <div className="flex gap-1.5">
+              {[0.5, 1, 2, 3].map(s => (
+                <button key={s} onClick={() => setSlippage(s)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all
+                    ${slippage === s
+                      ? 'bg-telos-cyan/15 text-telos-cyan border border-telos-cyan/25'
+                      : 'bg-white/[0.03] text-gray-500 border border-transparent hover:bg-white/[0.06]'}`}>
+                  {s}%
                 </button>
-              </div>
-            ) : !address && (
-              <p className="text-xs text-gray-600">Connect wallet to see balance</p>
-            )}
-          </div>
-
-          {/* You receive preview */}
-          {(quote || oftQuote) && (
-            <div className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.04]">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">You receive</p>
-                  <p className="text-2xl font-light text-white">
-                    {oftQuote ? amount : quote ? fmt(quote.toAmount, quote.toToken.decimals) : ''}{' '}
-                    <span className="text-base text-gray-400">{token}</span>
-                  </p>
-                </div>
-                <div className="text-right text-xs text-gray-500">
-                  on {chainName(toChain)}
-                </div>
-              </div>
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Route details */}
-          {quote && (
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between text-gray-500">
-                <span>Via</span><span className="text-gray-300">{quote.tool}</span>
-              </div>
-              <div className="flex justify-between text-gray-500">
-                <span>Time</span><span className="text-gray-300">~{Math.ceil(quote.executionDuration / 60)} min</span>
-              </div>
-              <div className="flex justify-between text-gray-500">
-                <span>Min received</span><span className="text-gray-300">{fmt(quote.toAmountMin, quote.toToken.decimals)} {quote.toToken.symbol}</span>
-              </div>
-              {quote.gasCosts?.length > 0 && (
-                <div className="flex justify-between text-gray-500">
-                  <span>Gas</span><span className="text-gray-300">{fmt(quote.gasCosts[0].amount, quote.gasCosts[0].token?.decimals || 18)} {quote.gasCosts[0].token?.symbol || 'ETH'}</span>
+        <div className="px-5 pb-5 space-y-1.5">
+          {/* FROM panel */}
+          <div className="bg-[#16162280] rounded-xl p-4 border border-white/[0.03] focus-within:border-white/[0.08] transition-colors">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">From</span>
+              {address && displayBalance && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-gray-500">
+                    {parseFloat(displayBalance.formatted).toFixed(4)} {displayBalance.symbol}
+                  </span>
+                  <button onClick={handleHalf}
+                    className="text-[10px] text-gray-500 hover:text-telos-cyan px-1.5 py-0.5 rounded bg-white/[0.03] hover:bg-telos-cyan/10 transition-all font-medium">
+                    HALF
+                  </button>
+                  <button onClick={handleMax}
+                    className="text-[10px] text-gray-500 hover:text-telos-cyan px-1.5 py-0.5 rounded bg-white/[0.03] hover:bg-telos-cyan/10 transition-all font-medium">
+                    MAX
+                  </button>
                 </div>
               )}
             </div>
-          )}
-          {oftQuote && (
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between text-gray-500">
-                <span>Via</span><span className="text-telos-cyan font-medium">⚡ LayerZero OFT</span>
+            <div className="flex items-center gap-3">
+              <input type="number" inputMode="decimal" placeholder="0.00" value={amount}
+                onChange={e => setAmount(e.target.value)}
+                className="flex-1 bg-transparent text-[28px] font-light text-white outline-none placeholder-gray-700 min-w-0 tabular-nums" />
+              <select value={token} onChange={e => setToken(e.target.value)}
+                className="bg-[#1e1e30] border border-white/[0.06] rounded-xl px-3 py-2.5 text-sm font-semibold outline-none cursor-pointer hover:border-white/[0.12] transition-colors text-white min-w-[90px]">
+                {fromTokens.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="mt-2.5">
+              <select value={fromChain} onChange={e => setFromChain(Number(e.target.value))}
+                className="bg-transparent text-[11px] text-gray-500 outline-none cursor-pointer hover:text-gray-300 transition-colors">
+                {chains.map(c => (
+                  <option key={c.id} value={c.id}>{CHAIN_ICONS[c.id] || '⬡'} {c.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Swap button */}
+          <div className="flex justify-center -my-1 relative z-10">
+            <button onClick={swap}
+              className="w-10 h-10 rounded-xl bg-[#1a1a2e] border border-white/[0.06] flex items-center justify-center hover:border-telos-cyan/30 hover:bg-telos-cyan/5 transition-all text-gray-400 hover:text-telos-cyan shadow-lg shadow-black/20"
+              style={{ transform: `rotate(${swapRotation}deg)`, transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2L8 14M8 14L4 10M8 14L12 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* TO panel */}
+          <div className="bg-[#16162280] rounded-xl p-4 border border-white/[0.03]">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">To</span>
+              {quoting && (
+                <span className="text-[11px] text-telos-cyan flex items-center gap-1.5">
+                  <Spinner /> Fetching quote…
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                {quoting ? (
+                  <div className="skeleton h-8 w-32" />
+                ) : (
+                  <span className={`text-[28px] font-light tabular-nums block truncate ${hasQuote ? 'text-white' : 'text-gray-700'}`}>
+                    {oftQuote ? amount : quote ? fmt(quote.toAmount, quote.toToken.decimals) : '0.00'}
+                  </span>
+                )}
               </div>
-              <div className="flex justify-between text-gray-500">
-                <span>Rate</span><span className="text-gray-300">1:1 — no slippage</span>
-              </div>
-              <div className="flex justify-between text-gray-500">
-                <span>Fee</span><span className="text-gray-300">~{parseFloat(oftQuote.nativeFeeFormatted).toFixed(0)} TLOS{oftQuote.feeEstimated ? ' (est · excess refunded)' : ''}</span>
-              </div>
-              <div className="flex justify-between text-gray-500">
-                <span>Time</span><span className="text-gray-300">~2 min</span>
+              <div className="bg-[#1e1e30] border border-white/[0.06] rounded-xl px-3 py-2.5 text-sm font-semibold text-white min-w-[90px] text-center">
+                {token}
               </div>
             </div>
+            <div className="mt-2.5">
+              <select value={toChain} onChange={e => setToChain(Number(e.target.value))}
+                className="bg-transparent text-[11px] text-gray-500 outline-none cursor-pointer hover:text-gray-300 transition-colors">
+                {chains.map(c => (
+                  <option key={c.id} value={c.id}>{CHAIN_ICONS[c.id] || '⬡'} {c.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Route details (collapsible) */}
+          {hasQuote && (
+            <button onClick={() => setShowDetails(!showDetails)}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                {isOftRoute ? (
+                  <><span className="text-telos-cyan">⚡</span><span>LayerZero OFT · 1:1 · ~2 min</span></>
+                ) : quote && (
+                  <><span className="text-gray-500">via</span><span>{quote.tool}</span><span className="text-gray-600">·</span><span>~{Math.ceil(quote.executionDuration / 60)} min</span></>
+                )}
+              </div>
+              <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform ${showDetails ? 'rotate-180' : ''}`}
+                viewBox="0 0 16 16" fill="none">
+                <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
           )}
 
-          {/* Settings */}
-          {showSettings && (
-            <div className="bg-white/[0.02] rounded-xl p-3 space-y-2 border border-white/[0.04]">
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest">Slippage</p>
-              <div className="flex gap-2">
-                {[0.5, 1, 2].map(s => (
-                  <button key={s} onClick={() => setSlippage(s)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      slippage === s
-                        ? 'bg-telos-cyan/10 text-telos-cyan border border-telos-cyan/20'
-                        : 'text-gray-500 border border-transparent hover:text-gray-300'
-                    }`}>
-                    {s}%
-                  </button>
-                ))}
-              </div>
+          {hasQuote && showDetails && (
+            <div className="space-y-1.5 text-xs text-gray-500 px-3 pb-1">
+              {quote && (
+                <>
+                  <div className="flex justify-between"><span>Min received</span><span className="text-gray-300">{fmt(quote.toAmountMin, quote.toToken.decimals)} {quote.toToken.symbol}</span></div>
+                  <div className="flex justify-between"><span>Slippage</span><span className="text-gray-300">{slippage}%</span></div>
+                  {quote.gasCosts?.length > 0 && (
+                    <div className="flex justify-between"><span>Gas</span><span className="text-gray-300">{fmt(quote.gasCosts[0].amount, quote.gasCosts[0].token?.decimals || 18)} {quote.gasCosts[0].token?.symbol || 'ETH'}</span></div>
+                  )}
+                </>
+              )}
+              {oftQuote && (
+                <>
+                  <div className="flex justify-between"><span>Rate</span><span className="text-telos-cyan">1:1 — no slippage</span></div>
+                  <div className="flex justify-between"><span>LZ Fee</span><span className="text-gray-300">~{parseFloat(oftQuote.nativeFeeFormatted).toFixed(0)} TLOS{oftQuote.feeEstimated ? ' (est · excess refunded)' : ''}</span></div>
+                </>
+              )}
             </div>
           )}
 
           {/* Error */}
           {error && (
-            <div className="rounded-xl px-4 py-3 text-sm text-red-400 bg-red-500/5 border border-red-500/10">
-              {error}
+            <div className="flex items-start gap-2.5 bg-red-500/[0.06] border border-red-500/15 rounded-xl px-4 py-3">
+              <span className="text-red-400 text-sm">⚠</span>
+              <span className="text-sm text-red-400/90">{error}</span>
             </div>
           )}
 
           {/* Status */}
           {bridgeStatus && (
-            <div className="rounded-xl px-4 py-3 text-sm text-center text-telos-cyan bg-telos-cyan/5 border border-telos-cyan/10">
+            <div className="bg-telos-cyan/[0.04] border border-telos-cyan/10 rounded-xl px-4 py-3 text-sm text-center text-telos-cyan/90">
               {bridgeStatus}
+            </div>
+          )}
+
+          {/* Network warning */}
+          {wrongNetwork && !bridging && !bridgeStatus && (
+            <div className="flex items-center gap-2 bg-yellow-500/[0.05] border border-yellow-500/10 rounded-xl px-3.5 py-2.5 text-xs text-yellow-500/80">
+              <span>⚠</span><span>Will switch to {chainName(fromChain)} on bridge</span>
             </div>
           )}
 
           {/* CTA */}
           {!address ? (
-            <div className="w-full py-4 rounded-xl font-medium text-center text-gray-500 bg-white/[0.04] border border-white/[0.06]">
+            <div className="w-full py-4 rounded-xl font-semibold text-center text-gray-500 bg-white/[0.03] border border-white/[0.04] text-sm">
               Connect wallet to bridge
             </div>
           ) : (
-            <button
-              onClick={(quote || oftQuote) ? handleBridge : handleQuote}
+            <button onClick={hasQuote ? handleBridge : doQuote}
               disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || !ready || (telosUnavailable && !isOftRoute)}
-              className={`w-full py-4 rounded-xl font-semibold text-base transition-all disabled:opacity-20 disabled:cursor-not-allowed
-                ${(quote || oftQuote)
-                  ? 'bg-gradient-to-r from-telos-cyan to-telos-blue text-black hover:shadow-lg hover:shadow-telos-cyan/20'
-                  : 'bg-white/[0.08] text-white hover:bg-white/[0.12]'
-                }`}>
-              {!ready ? 'Loading...' : quoting ? (
-                <span className="inline-flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                  Getting quote...
-                </span>
+              className={`w-full py-4 rounded-xl font-semibold text-[15px] transition-all
+                bg-gradient-to-r from-telos-cyan via-telos-blue to-telos-purple text-white
+                disabled:opacity-20 disabled:cursor-not-allowed
+                hover:shadow-[0_0_30px_rgba(0,242,254,0.15)] hover:brightness-110 active:scale-[0.99]
+                ${hasQuote && !bridging ? 'bridge-ready' : ''}`}>
+              {!ready ? (
+                <span className="flex items-center justify-center gap-2"><Spinner /> Initializing…</span>
+              ) : quoting ? (
+                <span className="flex items-center justify-center gap-2"><Spinner /> Getting quote…</span>
               ) : bridging ? (
-                <span className="inline-flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                  Bridging...
-                </span>
-              ) : (quote || oftQuote) ? 'Bridge' : 'Get Quote'}
+                <span className="flex items-center justify-center gap-2"><Spinner /> Bridging…</span>
+              ) : hasQuote ? 'Bridge' : 'Get Quote'}
             </button>
           )}
         </div>
       </div>
 
       {/* Footer badges */}
-      <div className="flex items-center justify-center gap-3">
-        {isOftRoute && (
-          <span className="text-[10px] text-telos-cyan/50 bg-telos-cyan/5 rounded-full px-3 py-1 border border-telos-cyan/10">
-            ⚡ LayerZero OFT · 1:1 · excess fees refunded
+      {isOftRoute && (
+        <div className="text-center">
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-telos-cyan/60 bg-telos-cyan/[0.04] border border-telos-cyan/[0.08] rounded-full px-3 py-1.5 font-medium">
+            ⚡ Direct LayerZero OFT — 1:1, no slippage
           </span>
-        )}
-        <button onClick={() => setShowSettings(!showSettings)}
-          className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors">
-          ⚙ Settings
-        </button>
-      </div>
-
-      {telosUnavailable && !isOftRoute && (
-        <p className="text-center text-[10px] text-gray-600">
-          Telos not yet on LiFi — TLOS→TLOS uses direct LayerZero OFT
-        </p>
+        </div>
       )}
+      {telosUnavailable && !isOftRoute && (
+        <div className="text-center">
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-telos-purple/60 bg-telos-purple/[0.04] border border-telos-purple/[0.08] rounded-full px-3 py-1.5 font-medium">
+            ✦ Telos on LiFi coming soon — use TLOS→TLOS for OFT bridging
+          </span>
+        </div>
+      )}
+      <p className="text-center text-[10px] text-gray-600/60">
+        {ready ? `${chains.length} chains · LiFi + LayerZero OFT` : 'Connecting…'}
+      </p>
     </div>
   )
 }
