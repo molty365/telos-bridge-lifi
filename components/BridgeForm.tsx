@@ -89,7 +89,12 @@ export function BridgeForm() {
       })
       setQuote(q)
     } catch (e: any) {
-      setError(e.message || 'Failed to get quote')
+      const msg = e.message || 'Failed to get quote'
+      if (msg.includes('No available quotes') || msg.includes('404')) {
+        setError(`No route for ${fromToken} → ${toToken} on this path. Try USDC or ETH — they have the most bridge liquidity.`)
+      } else {
+        setError(msg)
+      }
     } finally { setQuoting(false) }
   }, [fromChain, toChain, fromToken, toToken, amount, slippage, address])
 
