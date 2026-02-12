@@ -3,11 +3,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAccount, useBalance, useSwitchChain, useWalletClient, usePublicClient } from 'wagmi'
 import { SUPPORTED_CHAINS, CHAIN_MAP } from '@/lib/chains'
-import { TLOS_OFT_ADDRESSES, quoteOftSend, executeOftSend, type OftQuoteResult } from '@/lib/oft'
+import { isTlosOftRoute, quoteOftSend, executeOftSend, type OftQuoteResult } from '@/lib/oft'
+import {
+  isWrappedBridgeRoute, getAvailableTokens, TELOS_WRAPPED_TOKENS,
+  quoteWrappedBridge, executeWrappedBridge, type WrappedBridgeQuote,
+} from '@/lib/wrapped-bridge'
 
 const CHAIN_COLORS: Record<number, string> = {
   1: '#627EEA', 40: '#00F2FE', 8453: '#0052FF', 56: '#F0B90B',
   42161: '#28A0F0', 137: '#8247E5', 43114: '#E84142',
+}
+
+const TOKEN_LOGOS: Record<string, string> = {
+  TLOS: '/telos-bridge-lifi/tokens/TLOS.svg',
+  USDC: '/telos-bridge-lifi/tokens/USDC.png',
+  USDT: '/telos-bridge-lifi/tokens/USDT.png',
+  ETH: '/telos-bridge-lifi/tokens/ETH.png',
+  'BTC.b': '/telos-bridge-lifi/tokens/WBTC.png',
+  BNB: '/telos-bridge-lifi/tokens/BNB.png',
 }
 
 export function BridgeForm() {
@@ -16,51 +29,92 @@ export function BridgeForm() {
   const { data: walletClient } = useWalletClient()
   const [fromChain, setFromChain] = useState(40)
   const [toChain, setToChain] = useState(8453)
+  const [token, setToken] = useState('TLOS')
   const [amount, setAmount] = useState('')
   const [slippage, setSlippage] = useState(0.5)
   const [showSettings, setShowSettings] = useState(false)
 
   const [quoting, setQuoting] = useState(false)
   const [oftQuote, setOftQuote] = useState<OftQuoteResult | null>(null)
+  const [wrappedQuote, setWrappedQuote] = useState<WrappedBridgeQuote | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [bridging, setBridging] = useState(false)
   const [bridgeStatus, setBridgeStatus] = useState<string | null>(null)
   const publicClient = usePublicClient({ chainId: fromChain })
   const quoteTimeout = useRef<NodeJS.Timeout | null>(null)
 
+  // Token balance for ERC20 wrapped tokens
+  const wrappedTokenAddr = TELOS_WRAPPED_TOKENS[token]?.address
   const { data: nativeBalance } = useBalance({ address, chainId: fromChain })
+  const { data: tokenBalance } = useBalance({
+    address, chainId: fromChain,
+    token: wrappedTokenAddr as `0x${string}` | undefined,
+  })
+
+  const isOft = isTlosOftRoute(fromChain, toChain, token, token)
+  const isWrapped = !isOft && isWrappedBridgeRoute(token, fromChain, toChain)
+  const hasQuote = !!(oftQuote || wrappedQuote)
   const wrongNetwork = address && walletChainId !== fromChain
+  const displayBalance = token === 'TLOS' ? nativeBalance : tokenBalance
+
   const chainName = (id: number) => CHAIN_MAP.get(id)?.name || `Chain ${id}`
   const chainIcon = (id: number) => CHAIN_MAP.get(id)?.icon
 
+  // Build token list: TLOS (always) + wrapped tokens available for this route
+  const availableTokens = useCallback(() => {
+    const tokens = ['TLOS']
+    if (fromChain === 40) {
+      // From Telos: add wrapped tokens that can bridge to dest chain
+      const wrapped = getAvailableTokens(toChain)
+      tokens.push(...wrapped)
+    }
+    return tokens
+  }, [fromChain, toChain])
+
+  const tokenList = availableTokens()
+
+  // Reset token if not available on new route
+  useEffect(() => {
+    if (!tokenList.includes(token)) setToken('TLOS')
+  }, [tokenList, token])
+
+  const clearQuotes = () => { setOftQuote(null); setWrappedQuote(null); setError(null); setBridgeStatus(null) }
+
   const doQuote = useCallback(async () => {
     if (!amount || parseFloat(amount) <= 0 || !publicClient) return
-    setQuoting(true); setError(null); setOftQuote(null)
+    setQuoting(true); setError(null); setOftQuote(null); setWrappedQuote(null)
     try {
-      const oq = await quoteOftSend(publicClient, fromChain, toChain, amount,
-        address || '0x0000000000000000000000000000000000000001' as `0x${string}`)
-      setOftQuote(oq)
+      if (isOft) {
+        const oq = await quoteOftSend(publicClient, fromChain, toChain, amount,
+          address || '0x0000000000000000000000000000000000000001' as `0x${string}`)
+        setOftQuote(oq)
+      } else if (isWrapped) {
+        const wq = await quoteWrappedBridge(publicClient, toChain)
+        setWrappedQuote({ ...wq, amount: 0n, token })
+      } else {
+        setError(`${token} cannot be bridged on this route.`)
+      }
     } catch (e: any) {
       setError(e.message || 'Failed to get quote')
     } finally { setQuoting(false) }
-  }, [fromChain, toChain, amount, address, publicClient])
+  }, [fromChain, toChain, token, amount, address, publicClient, isOft, isWrapped])
 
   // Auto-quote with debounce
   useEffect(() => {
     if (quoteTimeout.current) clearTimeout(quoteTimeout.current)
-    setOftQuote(null)
+    setOftQuote(null); setWrappedQuote(null)
     if (!amount || parseFloat(amount) <= 0) return
     quoteTimeout.current = setTimeout(() => doQuote(), 800)
     return () => { if (quoteTimeout.current) clearTimeout(quoteTimeout.current) }
-  }, [amount, fromChain, toChain])
+  }, [amount, fromChain, toChain, token])
 
   const handleBridge = useCallback(async () => {
-    if (!oftQuote || !address || !walletClient || !publicClient) {
+    if (!hasQuote || !address || !walletClient || !publicClient) {
       setError(!address ? 'Connect your wallet first' : 'Get a quote first')
       return
     }
-    if (nativeBalance && parseFloat(amount) > parseFloat(nativeBalance.formatted)) {
-      setError('Insufficient TLOS balance')
+    if (displayBalance && parseFloat(amount) > parseFloat(displayBalance.formatted)) {
+      setError(`Insufficient ${token} balance`)
       return
     }
     setBridging(true); setError(null); setBridgeStatus('Preparing…')
@@ -69,36 +123,47 @@ export function BridgeForm() {
         setBridgeStatus('Switching network…')
         await switchChainAsync({ chainId: fromChain })
       }
-      await executeOftSend(walletClient, publicClient, fromChain, toChain, amount,
-        address, address, slippage, (s: string) => setBridgeStatus(s))
-      setOftQuote(null)
-      setBridgeStatus('✅ Bridge complete! TLOS arriving shortly.')
+      if (oftQuote) {
+        await executeOftSend(walletClient, publicClient, fromChain, toChain, amount,
+          address, address, slippage, (s: string) => setBridgeStatus(s))
+        setOftQuote(null)
+      } else if (wrappedQuote) {
+        await executeWrappedBridge(walletClient, publicClient, token, toChain, amount,
+          address, address, (s: string) => setBridgeStatus(s))
+        setWrappedQuote(null)
+      }
+      setBridgeStatus('✅ Bridge complete! Funds arriving shortly.')
       setAmount('')
     } catch (e: any) {
       const msg = e.message || 'Bridge failed'
       setError(msg.includes('rejected') || msg.includes('denied') ? 'Transaction rejected' : msg)
       setBridgeStatus(null)
     } finally { setBridging(false) }
-  }, [oftQuote, address, walletClient, publicClient, walletChainId, fromChain, toChain, switchChainAsync, amount, slippage, nativeBalance])
+  }, [oftQuote, wrappedQuote, address, walletClient, publicClient, walletChainId, fromChain, toChain, switchChainAsync, amount, slippage, displayBalance, token])
 
   const swap = () => {
     const fc = fromChain
     setFromChain(toChain); setToChain(fc)
-    setOftQuote(null); setBridgeStatus(null); setError(null)
+    clearQuotes()
   }
 
-  const handleMax = () => { if (nativeBalance) setAmount(nativeBalance.formatted) }
-  const handleHalf = () => { if (nativeBalance) setAmount((parseFloat(nativeBalance.formatted) / 2).toString()) }
+  const handleMax = () => { if (displayBalance) setAmount(displayBalance.formatted) }
+  const handleHalf = () => { if (displayBalance) setAmount((parseFloat(displayBalance.formatted) / 2).toString()) }
 
-  // Prevent same chain on both sides
   const handleFromChain = (id: number) => {
     if (id === toChain) setToChain(fromChain)
-    setFromChain(id); setOftQuote(null); setError(null); setBridgeStatus(null)
+    setFromChain(id); clearQuotes()
   }
   const handleToChain = (id: number) => {
     if (id === fromChain) setFromChain(toChain)
-    setToChain(id); setOftQuote(null); setError(null); setBridgeStatus(null)
+    setToChain(id); clearQuotes()
   }
+
+  const feeDisplay = oftQuote
+    ? `~${parseFloat(oftQuote.nativeFeeFormatted).toFixed(0)} TLOS${oftQuote.feeEstimated ? ' (est · excess refunded)' : ''}`
+    : wrappedQuote
+    ? `~${parseFloat(wrappedQuote.nativeFeeFormatted).toFixed(0)} TLOS${wrappedQuote.feeEstimated ? ' (est · excess refunded)' : ''}`
+    : ''
 
   return (
     <div className="space-y-4">
@@ -152,14 +217,24 @@ export function BridgeForm() {
             <input type="number" inputMode="decimal" placeholder="0.00" value={amount}
               onChange={e => setAmount(e.target.value)}
               className="flex-1 bg-transparent text-4xl font-light text-white outline-none placeholder-gray-600 min-w-0 tabular-nums" />
-            <div className="flex items-center gap-2.5 bg-[#252535] border border-gray-700/50 rounded-xl px-4 py-3 ml-4">
-              <img src="/telos-bridge-lifi/tokens/TLOS.svg" alt="TLOS" className="w-6 h-6" />
-              <span className="text-base font-semibold text-white">TLOS</span>
+            <div className="flex items-center gap-2.5 bg-[#252535] border border-gray-700/50 rounded-xl px-4 py-3 ml-4 relative">
+              {TOKEN_LOGOS[token] && <img src={TOKEN_LOGOS[token]} alt="" className="w-6 h-6 rounded-full" />}
+              {tokenList.length > 1 ? (
+                <>
+                  <select value={token} onChange={e => { setToken(e.target.value); clearQuotes() }}
+                    className="bg-transparent text-base font-semibold outline-none cursor-pointer text-white appearance-none pr-5">
+                    {tokenList.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <svg className="w-3.5 h-3.5 text-gray-500 absolute right-3" viewBox="0 0 12 12" fill="none"><path d="M3 5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                </>
+              ) : (
+                <span className="text-base font-semibold text-white">{token}</span>
+              )}
             </div>
           </div>
-          {address && nativeBalance && (
+          {address && displayBalance && (
             <div className="flex items-center justify-between text-sm text-gray-500">
-              <span>{parseFloat(nativeBalance.formatted).toFixed(4)} TLOS available</span>
+              <span>{parseFloat(displayBalance.formatted).toFixed(4)} {token} available</span>
               <div className="flex gap-2">
                 <button onClick={handleHalf} className="text-xs text-gray-500 hover:text-telos-cyan px-2 py-1 rounded-lg bg-white/[0.03] hover:bg-telos-cyan/10 transition-all font-medium">HALF</button>
                 <button onClick={handleMax} className="text-xs text-telos-cyan/60 hover:text-telos-cyan px-2 py-1 rounded-lg bg-telos-cyan/5 hover:bg-telos-cyan/10 transition-all font-medium">MAX</button>
@@ -169,7 +244,7 @@ export function BridgeForm() {
         </div>
 
         {/* You receive */}
-        {(oftQuote || quoting) && (
+        {(hasQuote || quoting) && (
           <div className="bg-[#1a1a28] rounded-xl p-5">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">You receive</p>
             <div className="flex items-center justify-between">
@@ -179,8 +254,8 @@ export function BridgeForm() {
                 <span className="text-3xl font-light text-telos-cyan tabular-nums">{amount}</span>
               )}
               <div className="flex items-center gap-2 text-base text-gray-400 font-medium">
-                <img src="/telos-bridge-lifi/tokens/TLOS.svg" alt="" className="w-5 h-5" />
-                TLOS on {chainName(toChain)}
+                {TOKEN_LOGOS[token] && <img src={TOKEN_LOGOS[token]} alt="" className="w-5 h-5 rounded-full" />}
+                {token} on {chainName(toChain)}
               </div>
             </div>
           </div>
@@ -208,11 +283,16 @@ export function BridgeForm() {
         )}
 
         {/* Route details */}
-        {oftQuote && (
+        {hasQuote && (
           <div className="space-y-1.5 text-xs text-gray-500 px-1">
-            <div className="flex justify-between"><span>Via</span><span className="text-telos-cyan font-medium">⚡ LayerZero OFT</span></div>
+            <div className="flex justify-between">
+              <span>Via</span>
+              <span className="text-telos-cyan font-medium">
+                ⚡ {isOft ? 'LayerZero OFT' : 'LayerZero Wrapped Bridge'}
+              </span>
+            </div>
             <div className="flex justify-between"><span>Rate</span><span className="text-gray-300">1:1 — no slippage</span></div>
-            <div className="flex justify-between"><span>Fee</span><span className="text-gray-300">~{parseFloat(oftQuote.nativeFeeFormatted).toFixed(0)} TLOS{oftQuote.feeEstimated ? ' (est · excess refunded)' : ''}</span></div>
+            <div className="flex justify-between"><span>Fee</span><span className="text-gray-300">{feeDisplay}</span></div>
             <div className="flex justify-between"><span>Time</span><span className="text-gray-300">~2 min</span></div>
           </div>
         )}
@@ -234,16 +314,23 @@ export function BridgeForm() {
           </div>
         )}
 
+        {/* From non-Telos notice */}
+        {fromChain !== 40 && (
+          <div className="flex items-center gap-2 bg-telos-cyan/[0.04] border border-telos-cyan/10 rounded-xl px-3.5 py-2.5 text-xs text-telos-cyan/70">
+            <span>ℹ</span><span>Only TLOS bridging available from non-Telos chains</span>
+          </div>
+        )}
+
         {/* CTA */}
         {!address ? (
           <div className="w-full py-5 rounded-xl font-semibold text-center text-gray-500 bg-[#1a1a28] border border-gray-800/50 text-lg">
             Connect wallet to bridge
           </div>
         ) : (
-          <button onClick={oftQuote ? handleBridge : doQuote}
-            disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || fromChain === toChain}
+          <button onClick={hasQuote ? handleBridge : doQuote}
+            disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || fromChain === toChain || (!isOft && !isWrapped)}
             className="w-full py-5 rounded-xl font-semibold text-lg bg-gradient-to-r from-telos-cyan via-telos-blue to-telos-purple text-white disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 transition-all shadow-lg shadow-telos-cyan/10">
-            {quoting ? 'Getting quote...' : bridging ? 'Bridging...' : oftQuote ? '⚡ Bridge TLOS' : 'Get Quote'}
+            {quoting ? 'Getting quote...' : bridging ? 'Bridging...' : hasQuote ? `⚡ Bridge ${token}` : 'Get Quote'}
           </button>
         )}
       </div>
@@ -251,10 +338,10 @@ export function BridgeForm() {
       {/* Footer */}
       <div className="text-center">
         <span className="inline-flex items-center gap-1.5 text-xs text-telos-cyan/70 bg-telos-cyan/5 border border-telos-cyan/10 rounded-full px-3 py-1.5">
-          ⚡ Direct LayerZero OFT — 1:1, no slippage, excess fees refunded
+          ⚡ LayerZero — 1:1 bridging, excess fees refunded
         </span>
       </div>
-      <p className="text-center text-[10px] text-gray-600">{SUPPORTED_CHAINS.length} chains · LayerZero OFT</p>
+      <p className="text-center text-[10px] text-gray-600">{SUPPORTED_CHAINS.length} chains · LayerZero OFT + Wrapped Bridge</p>
     </div>
   )
 }
