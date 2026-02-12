@@ -180,7 +180,7 @@ export function BridgeForm() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-[#12121a]/80 backdrop-blur-xl border border-gray-800/50 rounded-2xl p-5 space-y-4 shadow-2xl shadow-black/40">
+      <div className="bg-[#12121a]/80 backdrop-blur-xl border border-gray-800/50 rounded-2xl p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/40">
 
         {/* Settings toggle */}
         <div className="flex justify-end">
@@ -189,35 +189,35 @@ export function BridgeForm() {
         </div>
 
         {/* Chain selector row */}
-        <div className="flex items-center gap-2">
-          <div className="flex-1 bg-[#1a1a28] rounded-xl p-3 hover:bg-[#1e1e30] transition-colors">
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">From</p>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center shrink-0"
+        <div className="flex items-center gap-3">
+          <div className="flex-1 bg-[#1a1a28] rounded-xl p-4 hover:bg-[#1e1e30] transition-colors">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">From</p>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0"
                 style={{ background: `${CHAIN_COLORS[fromChain] || '#666'}20` }}>
-                {CHAIN_LOGOS[fromChain] && <img src={CHAIN_LOGOS[fromChain]} alt="" className="w-5 h-5 rounded-full" />}
+                {CHAIN_LOGOS[fromChain] && <img src={CHAIN_LOGOS[fromChain]} alt="" className="w-7 h-7 rounded-full" />}
               </div>
               <select value={fromChain} onChange={e => setFromChain(Number(e.target.value))}
-                className="bg-transparent text-white font-semibold text-sm outline-none cursor-pointer flex-1 min-w-0">
+                className="bg-transparent text-white font-semibold text-base outline-none cursor-pointer flex-1 min-w-0">
                 {chains.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
           </div>
 
           <button onClick={swap}
-            className="w-9 h-9 rounded-full bg-[#1a1a28] border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 transition-all text-gray-400 hover:text-telos-cyan shrink-0">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 2L13 5L10 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 5H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M6 14L3 11L6 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M13 11H3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            className="w-10 h-10 rounded-full bg-[#1a1a28] border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 transition-all text-gray-400 hover:text-telos-cyan shrink-0">
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M10 2L13 5L10 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 5H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M6 14L3 11L6 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M13 11H3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
 
-          <div className="flex-1 bg-[#1a1a28] rounded-xl p-3 hover:bg-[#1e1e30] transition-colors">
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">To</p>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center shrink-0"
+          <div className="flex-1 bg-[#1a1a28] rounded-xl p-4 hover:bg-[#1e1e30] transition-colors">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">To</p>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0"
                 style={{ background: `${CHAIN_COLORS[toChain] || '#666'}20` }}>
-                {CHAIN_LOGOS[toChain] && <img src={CHAIN_LOGOS[toChain]} alt="" className="w-5 h-5 rounded-full" />}
+                {CHAIN_LOGOS[toChain] && <img src={CHAIN_LOGOS[toChain]} alt="" className="w-7 h-7 rounded-full" />}
               </div>
               <select value={toChain} onChange={e => setToChain(Number(e.target.value))}
-                className="bg-transparent text-white font-semibold text-sm outline-none cursor-pointer flex-1 min-w-0">
+                className="bg-transparent text-white font-semibold text-base outline-none cursor-pointer flex-1 min-w-0">
                 {chains.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
@@ -225,26 +225,26 @@ export function BridgeForm() {
         </div>
 
         {/* Amount input */}
-        <div className="bg-[#1a1a28] rounded-xl p-4 space-y-2">
+        <div className="bg-[#1a1a28] rounded-xl p-5 space-y-3">
           <div className="flex items-center justify-between">
             <input type="number" inputMode="decimal" placeholder="0.00" value={amount}
               onChange={e => setAmount(e.target.value)}
-              className="flex-1 bg-transparent text-3xl font-light text-white outline-none placeholder-gray-600 min-w-0 tabular-nums" />
-            <div className="flex items-center gap-2 bg-[#252535] border border-gray-700/50 rounded-lg px-3 py-2 ml-3 relative">
-              {TOKEN_LOGOS[token] && <img src={TOKEN_LOGOS[token]} alt="" className="w-5 h-5 rounded-full" />}
+              className="flex-1 bg-transparent text-4xl font-light text-white outline-none placeholder-gray-600 min-w-0 tabular-nums" />
+            <div className="flex items-center gap-2.5 bg-[#252535] border border-gray-700/50 rounded-xl px-4 py-3 ml-4 relative">
+              {TOKEN_LOGOS[token] && <img src={TOKEN_LOGOS[token]} alt="" className="w-6 h-6 rounded-full" />}
               <select value={token} onChange={e => setToken(e.target.value)}
-                className="bg-transparent text-sm font-medium outline-none cursor-pointer text-white appearance-none pr-4">
+                className="bg-transparent text-base font-semibold outline-none cursor-pointer text-white appearance-none pr-5">
                 {fromTokens.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              <svg className="w-3 h-3 text-gray-500 absolute right-2" viewBox="0 0 12 12" fill="none"><path d="M3 5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              <svg className="w-3.5 h-3.5 text-gray-500 absolute right-3" viewBox="0 0 12 12" fill="none"><path d="M3 5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
             </div>
           </div>
           {address && displayBalance && (
-            <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center justify-between text-sm text-gray-500">
               <span>{parseFloat(displayBalance.formatted).toFixed(4)} {displayBalance.symbol} available</span>
-              <div className="flex gap-1.5">
-                <button onClick={handleHalf} className="text-[10px] text-gray-500 hover:text-telos-cyan px-1.5 py-0.5 rounded bg-white/[0.03] hover:bg-telos-cyan/10 transition-all font-medium">HALF</button>
-                <button onClick={handleMax} className="text-[10px] text-telos-cyan/60 hover:text-telos-cyan px-1.5 py-0.5 rounded bg-telos-cyan/5 hover:bg-telos-cyan/10 transition-all font-medium">MAX</button>
+              <div className="flex gap-2">
+                <button onClick={handleHalf} className="text-xs text-gray-500 hover:text-telos-cyan px-2 py-1 rounded-lg bg-white/[0.03] hover:bg-telos-cyan/10 transition-all font-medium">HALF</button>
+                <button onClick={handleMax} className="text-xs text-telos-cyan/60 hover:text-telos-cyan px-2 py-1 rounded-lg bg-telos-cyan/5 hover:bg-telos-cyan/10 transition-all font-medium">MAX</button>
               </div>
             </div>
           )}
@@ -252,18 +252,18 @@ export function BridgeForm() {
 
         {/* You receive */}
         {(hasQuote || quoting) && (
-          <div className="bg-[#1a1a28] rounded-xl p-4">
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">You receive</p>
+          <div className="bg-[#1a1a28] rounded-xl p-5">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">You receive</p>
             <div className="flex items-center justify-between">
               {quoting ? (
-                <div className="skeleton h-8 w-32" />
+                <div className="skeleton h-10 w-40" />
               ) : (
-                <span className="text-2xl font-light text-telos-cyan tabular-nums">
+                <span className="text-3xl font-light text-telos-cyan tabular-nums">
                   {oftQuote ? amount : quote ? fmt(quote.toAmount, quote.toToken.decimals) : ''}
                 </span>
               )}
-              <div className="flex items-center gap-2 text-sm text-gray-400 font-medium">
-                {TOKEN_LOGOS[token] && <img src={TOKEN_LOGOS[token]} alt="" className="w-4 h-4 rounded-full" />}
+              <div className="flex items-center gap-2 text-base text-gray-400 font-medium">
+                {TOKEN_LOGOS[token] && <img src={TOKEN_LOGOS[token]} alt="" className="w-5 h-5 rounded-full" />}
                 {token} on {chainName(toChain)}
               </div>
             </div>
@@ -320,13 +320,13 @@ export function BridgeForm() {
 
         {/* CTA */}
         {!address ? (
-          <div className="w-full py-4 rounded-xl font-semibold text-center text-gray-500 bg-[#1a1a28] border border-gray-800/50">
+          <div className="w-full py-5 rounded-xl font-semibold text-center text-gray-500 bg-[#1a1a28] border border-gray-800/50 text-lg">
             Connect wallet to bridge
           </div>
         ) : (
           <button onClick={hasQuote ? handleBridge : doQuote}
             disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || !ready || (telosUnavailable && !isOftRoute)}
-            className="w-full py-4 rounded-xl font-semibold text-base bg-gradient-to-r from-telos-cyan via-telos-blue to-telos-purple text-white disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 transition-all shadow-lg shadow-telos-cyan/10">
+            className="w-full py-5 rounded-xl font-semibold text-lg bg-gradient-to-r from-telos-cyan via-telos-blue to-telos-purple text-white disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 transition-all shadow-lg shadow-telos-cyan/10">
             {!ready ? 'Loading...' : quoting ? 'Getting quote...' : bridging ? 'Bridging...' : hasQuote ? '🚀 Bridge' : 'Get Quote'}
           </button>
         )}
