@@ -2,62 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background: #080810;
-  color: #e0e0e8;
-  overflow-x: hidden;
-}
+body { background: #080810; color: #e0e0e8; overflow-x: hidden; }
 
-/* Background orbs with drift */
-.bg-orb {
-  position: fixed;
-  border-radius: 50%;
-  filter: blur(140px);
-  opacity: 0.12;
-  pointer-events: none;
-  z-index: 0;
-  animation: orb-drift 20s ease-in-out infinite alternate;
-}
+.bg-orb { position: fixed; border-radius: 50%; filter: blur(120px); opacity: 0.15; pointer-events: none; z-index: 0; }
 .bg-orb-1 { width: 600px; height: 600px; background: #00F2FE; top: -200px; right: -100px; }
-.bg-orb-2 { width: 500px; height: 500px; background: #C471F5; bottom: -150px; left: -100px; animation-delay: -7s; }
-.bg-orb-3 { width: 400px; height: 400px; background: #4FACFE; top: 40%; left: 50%; transform: translateX(-50%); animation-delay: -14s; }
+.bg-orb-2 { width: 500px; height: 500px; background: #C471F5; bottom: -150px; left: -100px; }
+.bg-orb-3 { width: 400px; height: 400px; background: #4FACFE; top: 40%; left: 50%; transform: translateX(-50%); }
 
-@keyframes orb-drift {
-  0% { transform: translate(0, 0); }
-  100% { transform: translate(30px, -20px); }
-}
-
-/* Pulse glow on bridge-ready button */
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(0, 242, 254, 0.1); }
-  50% { box-shadow: 0 0 30px rgba(0, 242, 254, 0.25); }
-}
-.bridge-ready { animation: pulse-glow 2s ease-in-out infinite; }
-
-/* Skeleton loading shimmer */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
 .skeleton {
   background: linear-gradient(90deg, #1a1a28 25%, #252535 50%, #1a1a28 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 8px;
 }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 
-/* Spinner */
-@keyframes spin-slow { to { transform: rotate(360deg); } }
-.animate-spin-slow { animation: spin-slow 1.5s linear infinite; }
-
-/* Hide number input arrows */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input[type="number"] { -moz-appearance: textfield; }
-
-/* Card glow */
-.card-glow {
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 4px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03);
-}
 
 select option { background: #1a1a28; color: #e0e0e8; }
