@@ -67,8 +67,18 @@ const OFT_V1_ABI = [
 // Default adapter params: version 1, 200000 gas
 const DEFAULT_ADAPTER_PARAMS = '0x00010000000000000000000000000000000000000000000000000000000000030d40' as Hex
 
-// Fallback LZ fee: 50 TLOS (real fee ~11 TLOS for Base, ~208 for ETH; excess refunded)
-const FALLBACK_FEE = parseEther('50')
+// Fallback LZ fees by destination (tested values + buffer)
+// Real: Base ~11 TLOS, ETH ~208 TLOS. Add 50% buffer, excess refunded.
+const FALLBACK_FEES: Record<number, bigint> = {
+  184: parseEther('20'),   // Base
+  110: parseEther('20'),   // Arbitrum
+  10:  parseEther('20'),   // Optimism
+  102: parseEther('30'),   // BSC
+  109: parseEther('30'),   // Polygon
+  106: parseEther('30'),   // Avalanche
+  101: parseEther('300'),  // Ethereum (expensive)
+}
+const DEFAULT_FALLBACK_FEE = parseEther('50')
 
 function addressToBytes32(addr: Address): Hex {
   return ('0x' + addr.slice(2).toLowerCase().padStart(64, '0')) as Hex
@@ -126,8 +136,7 @@ export async function quoteOftSend(
     nativeFee = result[0]
   } catch {
     // estimateSendFee reverts on Telos RPC (oracle issue) but actual sends work
-    // Fallback: 50 TLOS covers all routes; excess is refunded by LayerZero
-    nativeFee = FALLBACK_FEE
+    nativeFee = FALLBACK_FEES[dstChainId] || DEFAULT_FALLBACK_FEE
     feeEstimated = true
   }
 
@@ -170,7 +179,7 @@ export async function executeOftSend(
     }) as [bigint, bigint]
     nativeFee = result[0]
   } catch {
-    nativeFee = FALLBACK_FEE
+    nativeFee = FALLBACK_FEES[dstChainId] || DEFAULT_FALLBACK_FEE
     onStatus('Using estimated fee (excess will be refunded)...')
   }
 
