@@ -90,7 +90,12 @@ export function BridgeForm() {
     if (!ready) return
     getTokensForChain(fromChain).then(t => {
       setFromTokens(t)
-      if (!t.includes(token)) setToken(t[0] || 'TLOS')
+      // Default to TLOS when Telos is involved (since LiFi doesn't support Telos for other tokens)
+      if ((fromChain === 40 || toChain === 40) && t.includes('TLOS')) {
+        setToken('TLOS')
+      } else if (!t.includes(token)) {
+        setToken(t[0] || 'TLOS')
+      }
     })
   }, [fromChain, ready])
 
@@ -116,6 +121,8 @@ export function BridgeForm() {
       const msg = e.message || 'Failed to get quote'
       if (msg.includes('No available quotes') || msg.includes('404')) {
         setError(`No route for ${fromToken} on this path.`)
+      } else if (msg.includes('must be equal to one of the allowed') || msg.includes('must match exactly one schema')) {
+        setError(`${fromToken} bridging not available on this route. Try TLOS for direct OFT bridging.`)
       } else { setError(msg) }
     } finally { setQuoting(false) }
   }, [fromChain, toChain, fromToken, toToken, amount, slippage, address, isOftRoute, publicClient, ready])
