@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAccount } from 'wagmi'
+import { useAccount, useBalance, useSwitchChain, useSendTransaction, useWalletClient } from 'wagmi'
 import { dynamicChains, type ChainInfo } from '@/lib/chains'
-import { initLiFi, isChainAvailable, fetchQuote, getTokensForChain } from '@/lib/lifi'
+import { initLiFi, isChainAvailable, fetchQuote, getTokensForChain, getTokenAddress, executeBridge } from '@/lib/lifi'
 
 export function BridgeForm() {
-  const { address } = useAccount()
+  const { address, chainId: walletChainId } = useAccount()
+  const { switchChainAsync } = useSwitchChain()
+  const { data: walletClient } = useWalletClient()
   const [chains, setChains] = useState<ChainInfo[]>([])
   const [fromChain, setFromChain] = useState(1)
   const [toChain, setToChain] = useState(40)
@@ -21,18 +23,45 @@ export function BridgeForm() {
   const [quote, setQuote] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
+  const [bridging, setBridging] = useState(false)
+  const [bridgeStatus, setBridgeStatus] = useState<string | null>(null)
+  const [fromTokenAddress, setFromTokenAddress] = useState<string | undefined>(undefined)
+
+  // Fetch token address for balance lookup
+  useEffect(() => {
+    if (!ready) return
+    getTokenAddress(fromChain, fromToken).then(addr => setFromTokenAddress(addr))
+  }, [fromChain, fromToken, ready])
+
+  // Balance for native token
+  const { data: nativeBalance } = useBalance({
+    address,
+    chainId: fromChain,
+  })
+
+  // Balance for ERC20 token
+  const { data: tokenBalance } = useBalance({
+    address,
+    chainId: fromChain,
+    token: fromTokenAddress && fromTokenAddress !== '0x0000000000000000000000000000000000000000'
+      ? fromTokenAddress as `0x${string}`
+      : undefined,
+  })
+
+  // Determine which balance to show
+  const isNativeToken = fromTokenAddress === '0x0000000000000000000000000000000000000000' ||
+    ['ETH', 'TLOS', 'BNB', 'MATIC', 'AVAX'].includes(fromToken)
+  const displayBalance = isNativeToken ? nativeBalance : tokenBalance
 
   useEffect(() => {
     initLiFi().then(async () => {
       setChains([...dynamicChains])
       setReady(true)
-      // Load tokens for default chains
       setFromTokens(await getTokensForChain(1))
       setToTokens(await getTokensForChain(40))
     })
   }, [])
 
-  // Update tokens when chain changes
   useEffect(() => {
     if (!ready) return
     getTokensForChain(fromChain).then(t => {
@@ -64,16 +93,62 @@ export function BridgeForm() {
     } finally { setQuoting(false) }
   }, [fromChain, toChain, fromToken, toToken, amount, slippage, address])
 
+  const handleBridge = useCallback(async () => {
+    if (!quote || !address || !walletClient) {
+      setError(!address ? 'Connect your wallet first' : !walletClient ? 'Wallet not ready' : 'Get a quote first')
+      return
+    }
+
+    // Check balance
+    if (displayBalance && parseFloat(amount) > parseFloat(displayBalance.formatted)) {
+      setError(`Insufficient ${fromToken} balance (have ${parseFloat(displayBalance.formatted).toFixed(4)})`)
+      return
+    }
+
+    setBridging(true); setError(null); setBridgeStatus('Preparing transaction...')
+    try {
+      // Switch chain if needed
+      if (walletChainId !== fromChain) {
+        setBridgeStatus('Switching network...')
+        await switchChainAsync({ chainId: fromChain })
+      }
+
+      setBridgeStatus('Confirm in wallet...')
+      await executeBridge(quote.raw, (status: string) => {
+        setBridgeStatus(status)
+      })
+
+      setBridgeStatus('✅ Bridge initiated! Funds will arrive shortly.')
+      setQuote(null)
+      setAmount('')
+    } catch (e: any) {
+      const msg = e.message || 'Bridge failed'
+      if (msg.includes('rejected') || msg.includes('denied')) {
+        setError('Transaction rejected by user')
+      } else {
+        setError(msg)
+      }
+      setBridgeStatus(null)
+    } finally { setBridging(false) }
+  }, [quote, address, walletClient, walletChainId, fromChain, switchChainAsync, amount, displayBalance, fromToken])
+
   const swap = () => {
     const fc = fromChain, ft = fromToken
     setFromChain(toChain); setToChain(fc)
     setFromToken(toToken); setToToken(ft)
-    setQuote(null)
+    setQuote(null); setBridgeStatus(null)
   }
 
   const fmt = (raw: string, dec: number) => {
     const n = parseFloat(raw) / 10 ** dec
     return n < 0.001 ? n.toExponential(2) : n.toFixed(Math.min(6, dec))
+  }
+
+  const handleMax = () => {
+    if (displayBalance) {
+      setAmount(displayBalance.formatted)
+      setQuote(null)
+    }
   }
 
   const telosUnavailable = ready && !isChainAvailable(40) && (fromChain === 40 || toChain === 40)
@@ -82,7 +157,15 @@ export function BridgeForm() {
     <div className="bg-[#12121a] border border-gray-800 rounded-2xl p-6 space-y-5">
       {/* From */}
       <div className="space-y-2">
-        <label className="text-xs text-gray-500 uppercase tracking-wider">From</label>
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-gray-500 uppercase tracking-wider">From</label>
+          {address && displayBalance && (
+            <button onClick={handleMax} className="text-xs text-gray-400 hover:text-telos-cyan transition-colors">
+              Balance: <span className="text-gray-300">{parseFloat(displayBalance.formatted).toFixed(4)} {displayBalance.symbol}</span>
+              <span className="ml-1 text-telos-cyan/60">(MAX)</span>
+            </button>
+          )}
+        </div>
         <div className="flex gap-3">
           <select value={fromChain} onChange={e => { setFromChain(Number(e.target.value)); setQuote(null) }}
             className="flex-1 bg-[#1a1a25] border border-gray-700 rounded-xl px-4 py-3 text-sm focus:border-telos-cyan outline-none">
@@ -157,11 +240,24 @@ export function BridgeForm() {
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-sm text-red-400">{error}</div>
       )}
 
-      <button onClick={handleQuote}
-        disabled={!amount || parseFloat(amount) <= 0 || quoting || !ready || telosUnavailable}
-        className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-telos-cyan to-telos-blue text-black disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity">
-        {!ready ? 'Loading chains...' : quoting ? 'Getting Quote...' : quote ? 'Bridge' : 'Get Quote'}
-      </button>
+      {bridgeStatus && (
+        <div className="bg-telos-cyan/5 border border-telos-cyan/20 rounded-xl p-3 text-sm text-center text-telos-cyan">
+          {bridgeStatus}
+        </div>
+      )}
+
+      {!address ? (
+        <div className="w-full py-4 rounded-xl font-bold text-lg bg-gray-700/50 text-gray-400 text-center">
+          Connect Wallet to Bridge
+        </div>
+      ) : (
+        <button
+          onClick={quote ? handleBridge : handleQuote}
+          disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || !ready || telosUnavailable}
+          className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-telos-cyan to-telos-blue text-black disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity">
+          {!ready ? 'Loading chains...' : quoting ? 'Getting Quote...' : bridging ? 'Bridging...' : quote ? 'Bridge' : 'Get Quote'}
+        </button>
+      )}
 
       {telosUnavailable && (
         <div className="bg-telos-purple/10 border border-telos-purple/30 rounded-xl p-3 text-sm text-center text-telos-purple">

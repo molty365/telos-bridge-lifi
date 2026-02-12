@@ -10,7 +10,7 @@ export interface ChainInfo {
 
 // Will be populated dynamically from LiFi
 export let dynamicChains: ChainInfo[] = []
-export let dynamicTokensByChain: Record<number, Array<{ symbol: string; address: string; decimals: number; logoURI?: string }>> = {}
+export let dynamicTokensByChain: Record<number, Array<{ symbol: string; address: string; decimals: number; logoURI?: string; name?: string }>> = {}
 
 export function setDynamicChains(chains: ChainInfo[]) {
   // Sort: priority chains first, then alphabetical

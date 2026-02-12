@@ -1,4 +1,4 @@
-import { createConfig, getChains, getTokens, getQuote, getConnections } from '@lifi/sdk'
+import { createConfig, getChains, getTokens, getQuote, getConnections, convertQuoteToRoute, executeRoute } from '@lifi/sdk'
 import { setDynamicChains, setDynamicTokens, PRIORITY_CHAINS, type ChainInfo } from './chains'
 
 createConfig({ integrator: 'telos-bridge' })
@@ -173,4 +173,37 @@ export async function fetchQuote(params: {
     toToken,
     raw: quote,
   }
+}
+
+export async function getTokenAddress(chainId: number, symbol: string): Promise<string | undefined> {
+  if (!inited) await initLiFi()
+  const { dynamicTokensByChain } = await import('./chains')
+  const list = dynamicTokensByChain[chainId] || []
+  const matches = list.filter((t: any) => t.symbol.toUpperCase() === symbol.toUpperCase())
+  const preferred = matches.length > 1
+    ? matches.find((t: any) => !t.name?.toLowerCase().includes('ptokens')) || matches[0]
+    : matches[0]
+  return preferred?.address
+}
+
+export async function executeBridge(rawQuote: any, onStatus: (msg: string) => void) {
+  const route = convertQuoteToRoute(rawQuote)
+
+  return executeRoute(route, {
+    updateRouteHook(updatedRoute) {
+      const step = updatedRoute.steps[0]
+      if (!step) return
+      const proc = step.execution?.process?.[step.execution.process.length - 1]
+      if (proc) {
+        const statusMap: Record<string, string> = {
+          STARTED: 'Sending transaction...',
+          ACTION_REQUIRED: 'Confirm in wallet...',
+          PENDING: 'Transaction pending...',
+          DONE: '✅ Bridge complete!',
+          FAILED: '❌ Bridge failed',
+        }
+        onStatus(statusMap[proc.status] || proc.message || proc.status)
+      }
+    },
+  })
 }
