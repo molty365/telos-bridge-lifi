@@ -24,10 +24,46 @@ export interface OftV2Token {
   underlyingAddress?: Address // underlying token if adapter pattern
   decimals: number
   sharedDecimals: number
-  peers: Record<number, Address>  // chainId → OFT address on that chain
+  isStargate?: boolean            // Stargate Hydra OFT (uses same send() interface)
+  peers: Record<number, Address>  // chainId → OFT/Pool address on that chain
 }
 
 export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
+  USDC: {
+    symbol: 'USDC',
+    name: 'USD Coin',
+    address: '0x2086f755A6d9254045C257ea3d382ef854849B0f',  // Stargate Hydra OFT on Telos
+    underlyingAddress: '0xF1815bd50389c46847f0Bda824eC8da914045D14', // Bridged USDC (Stargate)
+    decimals: 6,
+    sharedDecimals: 6,
+    isStargate: true,
+    peers: {
+      1: '0xc026395860Db2d07ee33e05fE50ed7bD583189C7',     // ETH StargatePoolUSDC
+      56: '0x962Bd449E630b0d928f308Ce63f1A21F02576057',    // BSC StargatePoolUSDC
+      43114: '0x5634c4a5FEd09819E3c46D86A965Dd9447d86e47', // AVAX StargatePoolUSDC
+      137: '0x9Aa02D4Fae7F58b8E8f34c66E756cC734DAc7fe4',   // Polygon StargatePoolUSDC
+      42161: '0xe8CDF27AcD73a434D661C84887215F7598e7d0d3', // Arb StargatePoolUSDC
+      10: '0xcE8CcA271Ebc0533920C83d39F417ED6A0abB7D0',    // OP StargatePoolUSDC
+      8453: '0x27a16dc786820B16E5c9028b75B99F6f604b5d26',  // Base StargatePoolUSDC
+    },
+  },
+  USDT: {
+    symbol: 'USDT',
+    name: 'Tether USD',
+    address: '0x3a1293Bdb83bBbDd5Ebf4fAc96605aD2021BbC0f',  // Stargate Hydra OFT on Telos
+    underlyingAddress: '0x674843C06FF83502ddb4D37c2E09C01cdA38cbc8', // USDT on Telos
+    decimals: 6,
+    sharedDecimals: 6,
+    isStargate: true,
+    peers: {
+      1: '0x933597a323Eb81cAe705C5bC29985172fd5A3973',     // ETH StargatePoolUSDT
+      56: '0x138EB30f73BC423c6455C53df6D89CB01d9eBc63',    // BSC StargatePoolUSDT
+      43114: '0x12dC9256Acc9895B076f6638D628382881e62CeE', // AVAX StargatePoolUSDT
+      137: '0xd47b03ee6d86Cf251ee7860FB2ACf9f91B9fD4d7',   // Polygon StargatePoolUSDT
+      42161: '0xcE8CcA271Ebc0533920C83d39F417ED6A0abB7D0', // Arb StargatePoolUSDT
+      10: '0x19cFCE47eD54a88614648DC3f19A5980097007dD',    // OP StargatePoolUSDT
+    },
+  },
   WBTC: {
     symbol: 'WBTC',
     name: 'Wrapped BTC',
@@ -50,7 +86,7 @@ export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
     decimals: 18,
     sharedDecimals: 6,
     peers: {
-      1: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9',     // ETH (same pattern)
+      1: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9',     // ETH
       56: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9',    // BSC
       43114: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9', // AVAX
       8453: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9',  // Base
@@ -60,6 +96,43 @@ export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
     },
   },
 }
+
+// Stargate quoteOFT ABI
+const STARGATE_QUOTE_OFT_ABI = [
+  {
+    name: 'quoteOFT',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      {
+        name: '_sendParam', type: 'tuple',
+        components: [
+          { name: 'dstEid', type: 'uint32' },
+          { name: 'to', type: 'bytes32' },
+          { name: 'amountLD', type: 'uint256' },
+          { name: 'minAmountLD', type: 'uint256' },
+          { name: 'extraOptions', type: 'bytes' },
+          { name: 'composeMsg', type: 'bytes' },
+          { name: 'oftCmd', type: 'bytes' },
+        ],
+      },
+    ],
+    outputs: [
+      { name: 'oftLimit', type: 'tuple', components: [
+        { name: 'minAmountLD', type: 'uint256' },
+        { name: 'maxAmountLD', type: 'uint256' },
+      ]},
+      { name: 'oftFeeDetails', type: 'tuple[]', components: [
+        { name: 'feeAmountLD', type: 'int256' },
+        { name: 'description', type: 'string' },
+      ]},
+      { name: 'oftReceipt', type: 'tuple', components: [
+        { name: 'amountSentLD', type: 'uint256' },
+        { name: 'amountReceivedLD', type: 'uint256' },
+      ]},
+    ],
+  },
+] as const
 
 // LZ V2 OFT ABI
 const OFT_V2_ABI = [
@@ -204,33 +277,50 @@ export async function quoteOftV2Send(
   const amountLD = parseUnits(amount, config.decimals)
   const toBytes32 = addressToBytes32(toAddress)
 
+  const sendParam = {
+    dstEid,
+    to: toBytes32,
+    amountLD,
+    minAmountLD: amountLD * 90n / 100n, // 10% slippage for quote
+    extraOptions: '0x' as Hex,
+    composeMsg: '0x' as Hex,
+    oftCmd: '0x' as Hex, // taxi mode (empty = taxi)
+  }
+
   try {
+    // For Stargate tokens, use quoteOFT first to get accurate received amount
+    let amountReceived = amountLD
+    if (config.isStargate) {
+      try {
+        const oftQuote = await publicClient.readContract({
+          address: config.address,
+          abi: STARGATE_QUOTE_OFT_ABI,
+          functionName: 'quoteOFT',
+          args: [sendParam],
+        }) as any
+        amountReceived = oftQuote[2]?.amountReceivedLD || oftQuote.oftReceipt?.amountReceivedLD || amountLD
+        // Update minAmountLD based on actual received amount
+        sendParam.minAmountLD = amountReceived * 99n / 100n
+      } catch { /* fall through to quoteSend */ }
+    }
+
     const result = await publicClient.readContract({
       address: config.address,
       abi: OFT_V2_ABI,
       functionName: 'quoteSend',
-      args: [
-        {
-          dstEid,
-          to: toBytes32,
-          amountLD,
-          minAmountLD: amountLD * 99n / 100n, // 1% slippage for quote
-          extraOptions: '0x' as Hex,
-          composeMsg: '0x' as Hex,
-          oftCmd: '0x' as Hex,
-        },
-        false,
-      ],
+      args: [sendParam, false],
     }) as any
 
     const nativeFee = result[0].nativeFee || result.msgFee?.nativeFee
-    const amountReceived = result[1].amountReceivedLD || result.oftReceipt?.amountReceivedLD
+    if (!config.isStargate) {
+      amountReceived = result[1]?.amountReceivedLD || result.oftReceipt?.amountReceivedLD || amountLD
+    }
 
     return {
       nativeFee,
       nativeFeeFormatted: formatUnits(nativeFee, 18),
-      amountReceived: amountReceived || amountLD,
-      amountReceivedFormatted: formatUnits(amountReceived || amountLD, config.decimals),
+      amountReceived,
+      amountReceivedFormatted: formatUnits(amountReceived, config.decimals),
       feeEstimated: false,
     }
   } catch (e) {
@@ -270,7 +360,12 @@ export async function executeOftV2Send(
   const quote = await quoteOftV2Send(publicClient, token, toChain, amount, toAddress)
   const feeWithBuffer = quote.nativeFee + quote.nativeFee / 10n
 
-  // Check and set ERC20 approval (WBTC/WETH need approval, unlike native TLOS)
+  // For Stargate, use quoteOFT minAmountLD; for regular OFTs, 1% slippage
+  const minAmountLD = config.isStargate
+    ? quote.amountReceived * 99n / 100n
+    : amountLD * 99n / 100n
+
+  // Check and set ERC20 approval
   const tokenToApprove = config.underlyingAddress || config.address
   onStatus('Checking token approval...')
 
@@ -306,10 +401,10 @@ export async function executeOftV2Send(
         dstEid,
         to: toBytes32,
         amountLD,
-        minAmountLD: amountLD * 99n / 100n,
+        minAmountLD,
         extraOptions: '0x' as Hex,
         composeMsg: '0x' as Hex,
-        oftCmd: '0x' as Hex,
+        oftCmd: '0x' as Hex, // empty = taxi mode (immediate for Stargate)
       },
       { nativeFee: feeWithBuffer, lzTokenFee: 0n },
       fromAddress,

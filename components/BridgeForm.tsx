@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAccount, useBalance, useSwitchChain, useWalletClient, usePublicClient } from 'wagmi'
 import { SUPPORTED_CHAINS, CHAIN_MAP } from '@/lib/chains'
 import { isTlosOftRoute, quoteOftSend, executeOftSend, type OftQuoteResult } from '@/lib/oft'
-import { isOftV2Route, getAvailableOftV2Tokens, quoteOftV2Send, executeOftV2Send, type OftV2QuoteResult } from '@/lib/oft-v2'
+import { isOftV2Route, getAvailableOftV2Tokens, quoteOftV2Send, executeOftV2Send, OFT_V2_TOKENS, type OftV2QuoteResult } from '@/lib/oft-v2'
 
 const CHAIN_COLORS: Record<number, string> = {
   1: '#627EEA', 40: '#00F2FE', 8453: '#0052FF', 56: '#F0B90B',
@@ -281,10 +281,10 @@ export function BridgeForm() {
             <div className="flex justify-between">
               <span>Via</span>
               <span className="text-telos-cyan font-medium">
-                ⚡ {isOft ? 'LayerZero OFT V1' : 'LayerZero OFT V2'}
+                ⚡ {isOft ? 'LayerZero OFT V1' : OFT_V2_TOKENS[token]?.isStargate ? 'Stargate (LayerZero V2)' : 'LayerZero OFT V2'}
               </span>
             </div>
-            <div className="flex justify-between"><span>Rate</span><span className="text-gray-300">1:1 — no slippage</span></div>
+            <div className="flex justify-between"><span>Rate</span><span className="text-gray-300">{OFT_V2_TOKENS[token]?.isStargate ? '~1:1 (Stargate fee applied)' : '1:1 — no slippage'}</span></div>
             <div className="flex justify-between"><span>Fee</span><span className="text-gray-300">{feeDisplay}</span></div>
             <div className="flex justify-between"><span>Time</span><span className="text-gray-300">~2 min</span></div>
           </div>
@@ -331,7 +331,7 @@ export function BridgeForm() {
       {/* Footer */}
       <div className="text-center">
         <span className="inline-flex items-center gap-1.5 text-xs text-telos-cyan/70 bg-telos-cyan/5 border border-telos-cyan/10 rounded-full px-3 py-1.5">
-          ⚡ LayerZero — 1:1 bridging, excess fees refunded
+          ⚡ LayerZero + Stargate — cross-chain bridging, excess fees refunded
         </span>
       </div>
       <p className="text-center text-[10px] text-gray-600">{SUPPORTED_CHAINS.length} chains · LayerZero OFT</p>
