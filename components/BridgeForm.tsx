@@ -54,10 +54,8 @@ export function BridgeForm() {
   // Build token list: TLOS (always) + V2 OFT tokens available for this route
   const availableTokens = useCallback(() => {
     const tokens = ['TLOS']
-    if (fromChain === 40) {
-      const v2tokens = getAvailableOftV2Tokens(toChain)
-      tokens.push(...v2tokens)
-    }
+    const v2tokens = getAvailableOftV2Tokens(fromChain, toChain)
+    tokens.push(...v2tokens)
     return tokens
   }, [fromChain, toChain])
 
@@ -79,7 +77,7 @@ export function BridgeForm() {
           address || '0x0000000000000000000000000000000000000001' as `0x${string}`)
         setOftQuote(oq)
       } else if (isV2) {
-        const vq = await quoteOftV2Send(publicClient, token, toChain, amount,
+        const vq = await quoteOftV2Send(publicClient, token, fromChain, toChain, amount,
           address || '0x0000000000000000000000000000000000000001' as `0x${string}`)
         setV2Quote(vq)
       } else {
@@ -119,7 +117,7 @@ export function BridgeForm() {
           address, address, slippage, (s: string) => setBridgeStatus(s))
         setOftQuote(null)
       } else if (v2Quote) {
-        await executeOftV2Send(walletClient, publicClient, token, toChain, amount,
+        await executeOftV2Send(walletClient, publicClient, token, fromChain, toChain, amount,
           address, address, (s: string) => setBridgeStatus(s))
         setV2Quote(null)
       }
@@ -150,10 +148,11 @@ export function BridgeForm() {
     setToChain(id); clearQuotes()
   }
 
+  const feeCurrency = CHAIN_MAP.get(fromChain)?.nativeCurrency || 'TLOS'
   const feeDisplay = oftQuote
-    ? `~${parseFloat(oftQuote.nativeFeeFormatted).toFixed(0)} TLOS${oftQuote.feeEstimated ? ' (est · excess refunded)' : ''}`
+    ? `~${parseFloat(oftQuote.nativeFeeFormatted).toFixed(0)} ${feeCurrency}${oftQuote.feeEstimated ? ' (est · excess refunded)' : ''}`
     : v2Quote
-    ? `~${parseFloat(v2Quote.nativeFeeFormatted).toFixed(2)} TLOS${v2Quote.feeEstimated ? ' (est · excess refunded)' : ''}`
+    ? `~${parseFloat(v2Quote.nativeFeeFormatted).toFixed(4)} ${feeCurrency}${v2Quote.feeEstimated ? ' (est · excess refunded)' : ''}`
     : ''
 
   return (
@@ -308,9 +307,9 @@ export function BridgeForm() {
         )}
 
         {/* From non-Telos notice */}
-        {fromChain !== 40 && (
+        {fromChain !== 40 && tokenList.length === 1 && (
           <div className="flex items-center gap-2 bg-telos-cyan/[0.04] border border-telos-cyan/10 rounded-xl px-3.5 py-2.5 text-xs text-telos-cyan/70">
-            <span>ℹ</span><span>Only TLOS bridging available from non-Telos chains</span>
+            <span>ℹ</span><span>Only TLOS bridging available on this route</span>
           </div>
         )}
 

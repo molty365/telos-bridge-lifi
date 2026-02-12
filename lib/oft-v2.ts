@@ -237,8 +237,11 @@ function addressToBytes32(addr: Address): Hex {
 export function isOftV2Route(token: string, fromChain: number, toChain: number): boolean {
   const config = OFT_V2_TOKENS[token]
   if (!config) return false
-  if (fromChain !== 40) return false  // Currently only bridging FROM Telos
-  return !!config.peers[toChain] && !!LZ_V2_EIDS[toChain]
+  // Bridging FROM Telos: destination must be a peer
+  if (fromChain === 40) return !!config.peers[toChain] && !!LZ_V2_EIDS[toChain]
+  // Bridging TO Telos: source must be a peer
+  if (toChain === 40) return !!config.peers[fromChain] && !!LZ_V2_EIDS[fromChain]
+  return false
 }
 
 export function getOftV2Chains(token: string): number[] {
@@ -247,11 +250,16 @@ export function getOftV2Chains(token: string): number[] {
   return Object.keys(config.peers).map(Number)
 }
 
-export function getAvailableOftV2Tokens(toChain: number): string[] {
-  return Object.keys(OFT_V2_TOKENS).filter(sym => {
-    const config = OFT_V2_TOKENS[sym]
-    return !!config.peers[toChain]
-  })
+// Get the contract address to call on a given source chain
+export function getOftV2SourceAddress(token: string, fromChain: number): Address {
+  const config = OFT_V2_TOKENS[token]
+  if (!config) throw new Error(`Unknown OFT V2 token: ${token}`)
+  if (fromChain === 40) return config.address  // Telos contract
+  return config.peers[fromChain]               // Remote chain contract (Stargate pool or OFT)
+}
+
+export function getAvailableOftV2Tokens(fromChain: number, toChain: number): string[] {
+  return Object.keys(OFT_V2_TOKENS).filter(sym => isOftV2Route(sym, fromChain, toChain))
 }
 
 export interface OftV2QuoteResult {
@@ -265,6 +273,7 @@ export interface OftV2QuoteResult {
 export async function quoteOftV2Send(
   publicClient: any,
   token: string,
+  fromChain: number,
   toChain: number,
   amount: string,
   toAddress: Address,
@@ -274,6 +283,7 @@ export async function quoteOftV2Send(
   const dstEid = LZ_V2_EIDS[toChain]
   if (!dstEid) throw new Error('Unsupported destination chain')
 
+  const sourceAddress = getOftV2SourceAddress(token, fromChain)
   const amountLD = parseUnits(amount, config.decimals)
   const toBytes32 = addressToBytes32(toAddress)
 
@@ -293,7 +303,7 @@ export async function quoteOftV2Send(
     if (config.isStargate) {
       try {
         const oftQuote = await publicClient.readContract({
-          address: config.address,
+          address: sourceAddress,
           abi: STARGATE_QUOTE_OFT_ABI,
           functionName: 'quoteOFT',
           args: [sendParam],
@@ -305,7 +315,7 @@ export async function quoteOftV2Send(
     }
 
     const result = await publicClient.readContract({
-      address: config.address,
+      address: sourceAddress,
       abi: OFT_V2_ABI,
       functionName: 'quoteSend',
       args: [sendParam, false],
@@ -324,8 +334,8 @@ export async function quoteOftV2Send(
       feeEstimated: false,
     }
   } catch (e) {
-    // Fallback fees
-    const fallback = toChain === 1 ? 300n : 20n
+    // Fallback fees — use source chain native currency amount
+    const fallback = toChain === 1 || fromChain === 1 ? 300n : 20n
     const nativeFee = fallback * 10n ** 18n
     return {
       nativeFee,
@@ -341,6 +351,7 @@ export async function executeOftV2Send(
   walletClient: any,
   publicClient: any,
   token: string,
+  fromChain: number,
   toChain: number,
   amount: string,
   fromAddress: Address,
@@ -352,12 +363,13 @@ export async function executeOftV2Send(
   const dstEid = LZ_V2_EIDS[toChain]
   if (!dstEid) throw new Error('Unsupported destination chain')
 
+  const sourceAddress = getOftV2SourceAddress(token, fromChain)
   const amountLD = parseUnits(amount, config.decimals)
   const toBytes32 = addressToBytes32(toAddress)
 
   // Get fee quote
   onStatus('Getting fee quote...')
-  const quote = await quoteOftV2Send(publicClient, token, toChain, amount, toAddress)
+  const quote = await quoteOftV2Send(publicClient, token, fromChain, toChain, amount, toAddress)
   const feeWithBuffer = quote.nativeFee + quote.nativeFee / 10n
 
   // For Stargate, use quoteOFT minAmountLD; for regular OFTs, 1% slippage
@@ -365,35 +377,73 @@ export async function executeOftV2Send(
     ? quote.amountReceived * 99n / 100n
     : amountLD * 99n / 100n
 
-  // Check and set ERC20 approval
-  const tokenToApprove = config.underlyingAddress || config.address
-  onStatus('Checking token approval...')
-
-  const allowance = await publicClient.readContract({
-    address: tokenToApprove,
-    abi: ERC20_ABI,
-    functionName: 'allowance',
-    args: [fromAddress, config.address],
-  }) as bigint
-
-  if (allowance < amountLD) {
-    onStatus(`Approve ${config.symbol} spend...`)
-    const approveTx = await walletClient.writeContract({
+  // Check and set ERC20 approval — approve the source contract to spend tokens
+  // For Stargate pools on remote chains, the pool contract IS the token (or needs approval on underlying)
+  const tokenToApprove = fromChain === 40
+    ? (config.underlyingAddress || config.address)  // On Telos, approve underlying token
+    : sourceAddress  // On remote chains, the Stargate pool handles its own token
+  
+  // For Stargate pools on remote chains, we need to approve the pool to spend the underlying token
+  // The pool's token() returns the underlying ERC20 address
+  let spender = sourceAddress
+  if (fromChain !== 40 && config.isStargate) {
+    // For remote Stargate pools, approve the pool to spend the underlying token
+    try {
+      const underlyingToken = await publicClient.readContract({
+        address: sourceAddress,
+        abi: [{ name: 'token', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] }],
+        functionName: 'token',
+      }) as Address
+      onStatus('Checking token approval...')
+      const allowance = await publicClient.readContract({
+        address: underlyingToken,
+        abi: ERC20_ABI,
+        functionName: 'allowance',
+        args: [fromAddress, sourceAddress],
+      }) as bigint
+      if (allowance < amountLD) {
+        onStatus(`Approve ${config.symbol} spend...`)
+        const approveTx = await walletClient.writeContract({
+          address: underlyingToken,
+          abi: ERC20_ABI,
+          functionName: 'approve',
+          args: [sourceAddress, amountLD],
+          chain: undefined,
+          account: fromAddress,
+        })
+        await publicClient.waitForTransactionReceipt({ hash: approveTx })
+        onStatus('Approved! Sending bridge...')
+      }
+    } catch {
+      // If token() fails, skip approval (might be native or OFT pattern)
+    }
+  } else {
+    onStatus('Checking token approval...')
+    const allowance = await publicClient.readContract({
       address: tokenToApprove,
       abi: ERC20_ABI,
-      functionName: 'approve',
-      args: [config.address, amountLD],
-      chain: undefined,
-      account: fromAddress,
-    })
-    await publicClient.waitForTransactionReceipt({ hash: approveTx })
-    onStatus('Approved! Sending bridge...')
+      functionName: 'allowance',
+      args: [fromAddress, sourceAddress],
+    }) as bigint
+    if (allowance < amountLD) {
+      onStatus(`Approve ${config.symbol} spend...`)
+      const approveTx = await walletClient.writeContract({
+        address: tokenToApprove,
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        args: [sourceAddress, amountLD],
+        chain: undefined,
+        account: fromAddress,
+      })
+      await publicClient.waitForTransactionReceipt({ hash: approveTx })
+      onStatus('Approved! Sending bridge...')
+    }
   }
 
   // Execute send
   onStatus('Confirm bridge in wallet...')
   const txHash = await walletClient.writeContract({
-    address: config.address,
+    address: sourceAddress,
     abi: OFT_V2_ABI,
     functionName: 'send',
     args: [
