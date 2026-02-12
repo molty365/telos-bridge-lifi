@@ -1,24 +1,29 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAccount, useBalance, useSwitchChain, useSendTransaction, useWalletClient, usePublicClient } from 'wagmi'
+import { useAccount, useBalance, useSwitchChain, useWalletClient, usePublicClient } from 'wagmi'
 import { dynamicChains, type ChainInfo } from '@/lib/chains'
 import { initLiFi, isChainAvailable, fetchQuote, getTokensForChain, getTokenAddress, executeBridge } from '@/lib/lifi'
 import { isTlosOftRoute, quoteOftSend, executeOftSend, type OftQuoteResult } from '@/lib/oft'
+
+const CHAIN_ICONS: Record<number, string> = {
+  1: '🔷', 40: '🟢', 8453: '🔵', 56: '🟡', 42161: '🔶', 137: '🟣', 43114: '🔺', 10: '🔴',
+}
 
 export function BridgeForm() {
   const { address, chainId: walletChainId } = useAccount()
   const { switchChainAsync } = useSwitchChain()
   const { data: walletClient } = useWalletClient()
   const [chains, setChains] = useState<ChainInfo[]>([])
-  const [fromChain, setFromChain] = useState(1)
-  const [toChain, setToChain] = useState(40)
+  const [fromChain, setFromChain] = useState(40)
+  const [toChain, setToChain] = useState(1)
   const [fromTokens, setFromTokens] = useState<string[]>([])
   const [toTokens, setToTokens] = useState<string[]>([])
-  const [fromToken, setFromToken] = useState('USDC')
-  const [toToken, setToToken] = useState('USDC')
+  const [fromToken, setFromToken] = useState('TLOS')
+  const [toToken, setToToken] = useState('TLOS')
   const [amount, setAmount] = useState('')
   const [slippage, setSlippage] = useState(0.5)
+  const [showSettings, setShowSettings] = useState(false)
 
   const [quoting, setQuoting] = useState(false)
   const [quote, setQuote] = useState<any>(null)
@@ -32,28 +37,18 @@ export function BridgeForm() {
 
   const isOftRoute = isTlosOftRoute(fromChain, toChain, fromToken, toToken)
 
-  // Fetch token address for balance lookup
   useEffect(() => {
     if (!ready) return
     getTokenAddress(fromChain, fromToken).then(addr => setFromTokenAddress(addr))
   }, [fromChain, fromToken, ready])
 
-  // Balance for native token
-  const { data: nativeBalance } = useBalance({
-    address,
-    chainId: fromChain,
-  })
-
-  // Balance for ERC20 token
+  const { data: nativeBalance } = useBalance({ address, chainId: fromChain })
   const { data: tokenBalance } = useBalance({
-    address,
-    chainId: fromChain,
+    address, chainId: fromChain,
     token: fromTokenAddress && fromTokenAddress !== '0x0000000000000000000000000000000000000000'
-      ? fromTokenAddress as `0x${string}`
-      : undefined,
+      ? fromTokenAddress as `0x${string}` : undefined,
   })
 
-  // Determine which balance to show
   const isNativeToken = fromTokenAddress === '0x0000000000000000000000000000000000000000' ||
     ['ETH', 'TLOS', 'BNB', 'MATIC', 'AVAX'].includes(fromToken)
   const displayBalance = isNativeToken ? nativeBalance : tokenBalance
@@ -62,8 +57,8 @@ export function BridgeForm() {
     initLiFi().then(async () => {
       setChains([...dynamicChains])
       setReady(true)
-      setFromTokens(await getTokensForChain(1))
-      setToTokens(await getTokensForChain(40))
+      setFromTokens(await getTokensForChain(40))
+      setToTokens(await getTokensForChain(1))
     })
   }, [])
 
@@ -88,7 +83,6 @@ export function BridgeForm() {
     setQuoting(true); setError(null); setQuote(null); setOftQuote(null)
     try {
       if (isOftRoute && publicClient) {
-        // Direct TLOS OFT bridging via LayerZero
         const oq = await quoteOftSend(
           publicClient, fromChain, toChain, amount,
           address || '0x0000000000000000000000000000000000000001' as `0x${string}`,
@@ -105,7 +99,7 @@ export function BridgeForm() {
     } catch (e: any) {
       const msg = e.message || 'Failed to get quote'
       if (msg.includes('No available quotes') || msg.includes('404')) {
-        setError(`No route for ${fromToken} → ${toToken} on this path. Try USDC or ETH — they have the most bridge liquidity.`)
+        setError(`No route for ${fromToken} → ${toToken}. Try USDC or ETH for best liquidity.`)
       } else {
         setError(msg)
       }
@@ -113,53 +107,34 @@ export function BridgeForm() {
   }, [fromChain, toChain, fromToken, toToken, amount, slippage, address, isOftRoute, publicClient])
 
   const handleBridge = useCallback(async () => {
-    const hasQuote = quote || oftQuote
-    if (!hasQuote || !address || !walletClient) {
-      setError(!address ? 'Connect your wallet first' : !walletClient ? 'Wallet not ready' : 'Get a quote first')
+    if (!(quote || oftQuote) || !address || !walletClient) {
+      setError(!address ? 'Connect your wallet first' : 'Get a quote first')
       return
     }
-
-    // Check balance
     if (displayBalance && parseFloat(amount) > parseFloat(displayBalance.formatted)) {
-      setError(`Insufficient ${fromToken} balance (have ${parseFloat(displayBalance.formatted).toFixed(4)})`)
+      setError(`Insufficient ${fromToken} balance`)
       return
     }
-
-    setBridging(true); setError(null); setBridgeStatus('Preparing transaction...')
+    setBridging(true); setError(null); setBridgeStatus('Preparing...')
     try {
-      // Switch chain if needed
       if (walletChainId !== fromChain) {
         setBridgeStatus('Switching network...')
         await switchChainAsync({ chainId: fromChain })
       }
-
       if (oftQuote && publicClient) {
-        // Direct OFT bridging
-        await executeOftSend(
-          walletClient, publicClient,
-          fromChain, toChain, amount,
-          address, address,
-          slippage,
-          (status: string) => setBridgeStatus(status),
-        )
+        await executeOftSend(walletClient, publicClient, fromChain, toChain, amount,
+          address, address, slippage, (s: string) => setBridgeStatus(s))
         setOftQuote(null)
       } else if (quote) {
         setBridgeStatus('Confirm in wallet...')
-        await executeBridge(quote.raw, (status: string) => {
-          setBridgeStatus(status)
-        })
+        await executeBridge(quote.raw, (s: string) => setBridgeStatus(s))
         setQuote(null)
       }
-
-      setBridgeStatus('✅ Bridge initiated! Funds will arrive shortly.')
+      setBridgeStatus('✅ Bridge complete! Funds arriving shortly.')
       setAmount('')
     } catch (e: any) {
       const msg = e.message || 'Bridge failed'
-      if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
-        setError('Transaction rejected by user')
-      } else {
-        setError(msg)
-      }
+      setError(msg.includes('rejected') || msg.includes('denied') ? 'Transaction rejected' : msg)
       setBridgeStatus(null)
     } finally { setBridging(false) }
   }, [quote, oftQuote, address, walletClient, publicClient, walletChainId, fromChain, toChain, switchChainAsync, amount, slippage, displayBalance, fromToken])
@@ -177,146 +152,184 @@ export function BridgeForm() {
   }
 
   const handleMax = () => {
-    if (displayBalance) {
-      setAmount(displayBalance.formatted)
-      setQuote(null)
-    }
+    if (displayBalance) { setAmount(displayBalance.formatted); setQuote(null) }
   }
 
+  const chainName = (id: number) => chains.find(c => c.id === id)?.name || `Chain ${id}`
   const telosUnavailable = ready && !isChainAvailable(40) && (fromChain === 40 || toChain === 40)
 
   return (
-    <div className="bg-[#12121a] border border-gray-800 rounded-2xl p-6 space-y-5">
-      {/* From */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-gray-500 uppercase tracking-wider">From</label>
+    <div className="space-y-4">
+      {/* Main card */}
+      <div className="bg-[#12121a]/80 backdrop-blur-xl border border-gray-800/50 rounded-2xl p-5 space-y-4 shadow-2xl shadow-black/40">
+
+        {/* Settings toggle */}
+        <div className="flex justify-end">
+          <button onClick={() => setShowSettings(!showSettings)}
+            className="text-gray-500 hover:text-gray-300 transition-colors text-lg">⚙️</button>
+        </div>
+
+        {/* Chain selector row */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 bg-[#1a1a28] rounded-xl p-3 cursor-pointer hover:bg-[#1e1e30] transition-colors">
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">From</p>
+            <select value={fromChain} onChange={e => { setFromChain(Number(e.target.value)); setQuote(null); setOftQuote(null) }}
+              className="w-full bg-transparent text-white font-semibold text-sm outline-none cursor-pointer">
+              {chains.map(c => (
+                <option key={c.id} value={c.id}>{CHAIN_ICONS[c.id] || '⬡'} {c.name}{c.id === 40 && !isChainAvailable(40) ? ' ✦' : ''}</option>
+              ))}
+            </select>
+          </div>
+
+          <button onClick={swap}
+            className="w-9 h-9 rounded-full bg-[#1a1a28] border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 transition-all text-gray-400 hover:text-telos-cyan shrink-0">
+            →
+          </button>
+
+          <div className="flex-1 bg-[#1a1a28] rounded-xl p-3 cursor-pointer hover:bg-[#1e1e30] transition-colors">
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">To</p>
+            <select value={toChain} onChange={e => { setToChain(Number(e.target.value)); setQuote(null); setOftQuote(null) }}
+              className="w-full bg-transparent text-white font-semibold text-sm outline-none cursor-pointer">
+              {chains.map(c => (
+                <option key={c.id} value={c.id}>{CHAIN_ICONS[c.id] || '⬡'} {c.name}{c.id === 40 && !isChainAvailable(40) ? ' ✦' : ''}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Amount input */}
+        <div className="bg-[#1a1a28] rounded-xl p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <input type="number" placeholder="0" value={amount}
+              onChange={e => { setAmount(e.target.value); setQuote(null); setOftQuote(null) }}
+              className="flex-1 bg-transparent text-3xl font-light text-white outline-none placeholder-gray-600 min-w-0" />
+            <select value={fromToken} onChange={e => { setFromToken(e.target.value); setQuote(null); setOftQuote(null) }}
+              className="bg-[#252535] border border-gray-700/50 rounded-lg px-3 py-2 text-sm font-medium outline-none cursor-pointer hover:border-gray-600 transition-colors ml-3">
+              {fromTokens.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
           {address && displayBalance && (
-            <button onClick={handleMax} className="text-xs text-gray-400 hover:text-telos-cyan transition-colors">
-              Balance: <span className="text-gray-300">{parseFloat(displayBalance.formatted).toFixed(4)} {displayBalance.symbol}</span>
-              <span className="ml-1 text-telos-cyan/60">(MAX)</span>
-            </button>
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <span>Balance: {parseFloat(displayBalance.formatted).toFixed(4)} {displayBalance.symbol}</span>
+              <button onClick={handleMax} className="text-telos-cyan/70 hover:text-telos-cyan transition-colors font-medium">MAX</button>
+            </div>
           )}
         </div>
-        <div className="flex gap-3">
-          <select value={fromChain} onChange={e => { setFromChain(Number(e.target.value)); setQuote(null) }}
-            className="flex-1 bg-[#1a1a25] border border-gray-700 rounded-xl px-4 py-3 text-sm focus:border-telos-cyan outline-none">
-            {chains.map(c => (
-              <option key={c.id} value={c.id}>{c.name}{c.id === 40 && !isChainAvailable(40) ? ' (Coming Soon)' : ''}</option>
-            ))}
-          </select>
-          <select value={fromToken} onChange={e => { setFromToken(e.target.value); setQuote(null) }}
-            className="w-28 bg-[#1a1a25] border border-gray-700 rounded-xl px-4 py-3 text-sm focus:border-telos-cyan outline-none">
-            {fromTokens.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-        <input type="number" placeholder="0.0" value={amount}
-          onChange={e => { setAmount(e.target.value); setQuote(null) }}
-          className="w-full bg-[#1a1a25] border border-gray-700 rounded-xl px-4 py-3 text-2xl font-mono focus:border-telos-cyan outline-none" />
-      </div>
 
-      {/* Swap */}
-      <div className="flex justify-center">
-        <button onClick={swap}
-          className="w-10 h-10 rounded-full bg-[#1a1a25] border border-gray-700 flex items-center justify-center hover:border-telos-cyan transition-colors text-lg">↕</button>
-      </div>
+        {/* Receive (if quote exists) */}
+        {(quote || oftQuote) && (
+          <div className="bg-[#1a1a28] rounded-xl p-4">
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">You receive</p>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-light text-telos-cyan">
+                {oftQuote ? amount : quote ? fmt(quote.toAmount, quote.toToken.decimals) : ''}
+              </span>
+              <span className="text-sm text-gray-400 font-medium">
+                {oftQuote ? toToken : quote?.toToken?.symbol}
+                {' on '}{chainName(toChain)}
+              </span>
+            </div>
+          </div>
+        )}
 
-      {/* To */}
-      <div className="space-y-2">
-        <label className="text-xs text-gray-500 uppercase tracking-wider">To</label>
-        <div className="flex gap-3">
-          <select value={toChain} onChange={e => { setToChain(Number(e.target.value)); setQuote(null) }}
-            className="flex-1 bg-[#1a1a25] border border-gray-700 rounded-xl px-4 py-3 text-sm focus:border-telos-cyan outline-none">
-            {chains.map(c => (
-              <option key={c.id} value={c.id}>{c.name}{c.id === 40 && !isChainAvailable(40) ? ' (Coming Soon)' : ''}</option>
-            ))}
-          </select>
-          <select value={toToken} onChange={e => { setToToken(e.target.value); setQuote(null) }}
-            className="w-28 bg-[#1a1a25] border border-gray-700 rounded-xl px-4 py-3 text-sm focus:border-telos-cyan outline-none">
-            {toTokens.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
+        {/* To token selector (when different from/to tokens) */}
+        {!isOftRoute && (
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span>Receive as:</span>
+            <select value={toToken} onChange={e => { setToToken(e.target.value); setQuote(null) }}
+              className="bg-[#1a1a28] border border-gray-700/50 rounded-lg px-2 py-1 text-xs outline-none cursor-pointer">
+              {toTokens.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+        )}
+
+        {/* Slippage (hidden by default) */}
+        {showSettings && (
+          <div className="bg-[#0e0e18] rounded-xl p-3 space-y-2">
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider">Slippage Tolerance</p>
+            <div className="flex gap-2">
+              {[0.5, 1, 2].map(s => (
+                <button key={s} onClick={() => setSlippage(s)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    slippage === s
+                      ? 'bg-telos-cyan/15 text-telos-cyan border border-telos-cyan/30'
+                      : 'bg-[#1a1a28] text-gray-400 border border-transparent hover:border-gray-700'
+                  }`}>
+                  {s}%
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Route details */}
         {quote && (
-          <div className="bg-[#1a1a25] border border-gray-700 rounded-xl px-4 py-3 text-2xl font-mono text-telos-cyan">
-            {fmt(quote.toAmount, quote.toToken.decimals)}
+          <div className="space-y-1.5 text-xs text-gray-500 px-1">
+            <div className="flex justify-between"><span>Route</span><span className="text-gray-300">{quote.tool}</span></div>
+            <div className="flex justify-between"><span>Time</span><span className="text-gray-300">~{Math.ceil(quote.executionDuration / 60)} min</span></div>
+            <div className="flex justify-between"><span>Min received</span><span className="text-gray-300">{fmt(quote.toAmountMin, quote.toToken.decimals)} {quote.toToken.symbol}</span></div>
+            {quote.gasCosts?.length > 0 && (
+              <div className="flex justify-between"><span>Gas</span><span className="text-gray-300">{fmt(quote.gasCosts[0].amount, quote.gasCosts[0].token?.decimals || 18)} {quote.gasCosts[0].token?.symbol || 'ETH'}</span></div>
+            )}
           </div>
         )}
         {oftQuote && (
-          <div className="bg-[#1a1a25] border border-gray-700 rounded-xl px-4 py-3 text-2xl font-mono text-telos-cyan">
-            {amount} <span className="text-sm text-gray-400">(1:1 via LayerZero)</span>
+          <div className="space-y-1.5 text-xs text-gray-500 px-1">
+            <div className="flex justify-between"><span>Route</span><span className="text-telos-cyan">⚡ LayerZero OFT</span></div>
+            <div className="flex justify-between"><span>Transfer</span><span className="text-gray-300">1:1 — no slippage</span></div>
+            <div className="flex justify-between"><span>LZ Fee</span><span className="text-gray-300">{parseFloat(oftQuote.nativeFeeFormatted).toFixed(2)} TLOS {oftQuote.feeEstimated ? '(est.)' : ''}</span></div>
+            <div className="flex justify-between"><span>Time</span><span className="text-gray-300">~2 min</span></div>
           </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-500/8 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
+        {/* Status */}
+        {bridgeStatus && (
+          <div className="bg-telos-cyan/5 border border-telos-cyan/15 rounded-xl px-4 py-3 text-sm text-center text-telos-cyan">
+            {bridgeStatus}
+          </div>
+        )}
+
+        {/* Action button */}
+        {!address ? (
+          <div className="w-full py-4 rounded-xl font-semibold text-center text-gray-500 bg-[#1a1a28] border border-gray-800/50">
+            Connect wallet to bridge
+          </div>
+        ) : (
+          <button
+            onClick={(quote || oftQuote) ? handleBridge : handleQuote}
+            disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || !ready || (telosUnavailable && !isOftRoute)}
+            className="w-full py-4 rounded-xl font-semibold text-base bg-gradient-to-r from-telos-cyan via-telos-blue to-telos-purple text-white disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 transition-all shadow-lg shadow-telos-cyan/10">
+            {!ready ? 'Loading...' : quoting ? 'Getting quote...' : bridging ? 'Bridging...' : (quote || oftQuote) ? '🚀 Bridge' : isOftRoute ? '⚡ Get OFT Quote' : 'Get Quote'}
+          </button>
         )}
       </div>
 
-      {/* Slippage */}
-      <div className="flex items-center justify-between text-xs text-gray-500">
-        <span>Slippage</span>
-        <div className="flex gap-2">
-          {[0.5, 1, 2].map(s => (
-            <button key={s} onClick={() => setSlippage(s)}
-              className={`px-3 py-1 rounded-lg border ${slippage === s ? 'border-telos-cyan text-telos-cyan bg-telos-cyan/10' : 'border-gray-700 hover:border-gray-600'}`}>
-              {s}%
-            </button>
-          ))}
+      {/* OFT badge */}
+      {isOftRoute && (
+        <div className="text-center">
+          <span className="inline-flex items-center gap-1.5 text-xs text-telos-cyan/70 bg-telos-cyan/5 border border-telos-cyan/10 rounded-full px-3 py-1.5">
+            ⚡ Direct LayerZero OFT — 1:1, no slippage, excess fees refunded
+          </span>
         </div>
-      </div>
-
-      {/* Quote details */}
-      {quote && (
-        <div className="bg-[#0a0a0f] rounded-xl p-4 space-y-2 text-sm">
-          <div className="flex justify-between text-gray-400"><span>Route</span><span className="text-white">{quote.tool}</span></div>
-          <div className="flex justify-between text-gray-400"><span>Est. time</span><span className="text-white">{Math.ceil(quote.executionDuration / 60)} min</span></div>
-          <div className="flex justify-between text-gray-400"><span>Min received</span><span className="text-white">{fmt(quote.toAmountMin, quote.toToken.decimals)} {quote.toToken.symbol}</span></div>
-          {quote.gasCosts.length > 0 && (
-            <div className="flex justify-between text-gray-400"><span>Gas</span><span className="text-white">{fmt(quote.gasCosts[0].amount, quote.gasCosts[0].token?.decimals || 18)} {quote.gasCosts[0].token?.symbol || 'ETH'}</span></div>
-          )}
-        </div>
-      )}
-      {oftQuote && (
-        <div className="bg-[#0a0a0f] rounded-xl p-4 space-y-2 text-sm">
-          <div className="flex justify-between text-gray-400"><span>Route</span><span className="text-telos-cyan font-medium">⚡ {oftQuote.route}</span></div>
-          <div className="flex justify-between text-gray-400"><span>Est. time</span><span className="text-white">~1 min</span></div>
-          <div className="flex justify-between text-gray-400"><span>Transfer</span><span className="text-white">1:1 (no slippage)</span></div>
-          <div className="flex justify-between text-gray-400"><span>LZ Fee</span><span className="text-white">{parseFloat(oftQuote.nativeFeeFormatted).toFixed(6)} native</span></div>
-        </div>
-      )}
-
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-sm text-red-400">{error}</div>
-      )}
-
-      {bridgeStatus && (
-        <div className="bg-telos-cyan/5 border border-telos-cyan/20 rounded-xl p-3 text-sm text-center text-telos-cyan">
-          {bridgeStatus}
-        </div>
-      )}
-
-      {!address ? (
-        <div className="w-full py-4 rounded-xl font-bold text-lg bg-gray-700/50 text-gray-400 text-center">
-          Connect Wallet to Bridge
-        </div>
-      ) : (
-        <button
-          onClick={(quote || oftQuote) ? handleBridge : handleQuote}
-          disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || !ready || (telosUnavailable && !isOftRoute)}
-          className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-telos-cyan to-telos-blue text-black disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity">
-          {!ready ? 'Loading chains...' : quoting ? 'Getting Quote...' : bridging ? 'Bridging...' : (quote || oftQuote) ? 'Bridge' : isOftRoute ? 'Get OFT Quote' : 'Get Quote'}
-        </button>
       )}
 
       {telosUnavailable && !isOftRoute && (
-        <div className="bg-telos-purple/10 border border-telos-purple/30 rounded-xl p-3 text-sm text-center text-telos-purple">
-          ⏳ Telos on LiFi coming soon — select another chain or bridge TLOS via LayerZero OFT!
-        </div>
-      )}
-      {isOftRoute && (
-        <div className="bg-telos-cyan/5 border border-telos-cyan/20 rounded-xl p-3 text-sm text-center text-telos-cyan">
-          ⚡ Direct LayerZero OFT transfer — 1:1 bridging, no slippage
+        <div className="text-center">
+          <span className="inline-flex items-center gap-1.5 text-xs text-telos-purple/70 bg-telos-purple/5 border border-telos-purple/10 rounded-full px-3 py-1.5">
+            ✦ Telos on LiFi coming soon — try TLOS→TLOS for direct OFT bridging
+          </span>
         </div>
       )}
 
-      <p className="text-center text-xs text-gray-600">
-        {ready ? `${chains.length} chains available` : 'Connecting to LiFi...'}
+      <p className="text-center text-[10px] text-gray-600">
+        {ready ? `${chains.length} chains · LiFi + LayerZero` : 'Connecting...'}
       </p>
     </div>
   )

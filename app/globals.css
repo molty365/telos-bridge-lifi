@@ -3,6 +3,38 @@
 @tailwind utilities;
 
 body {
-  background: #0a0a0f;
+  background: #080810;
   color: #e0e0e8;
+}
+
+/* Telos gradient background orbs */
+.bg-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+}
+.bg-orb-1 {
+  width: 600px;
+  height: 600px;
+  background: #00F2FE;
+  top: -200px;
+  right: -100px;
+}
+.bg-orb-2 {
+  width: 500px;
+  height: 500px;
+  background: #C471F5;
+  bottom: -150px;
+  left: -100px;
+}
+.bg-orb-3 {
+  width: 400px;
+  height: 400px;
+  background: #4FACFE;
+  top: 40%;
+  left: 50%;
+  transform: translateX(-50%);
 }
