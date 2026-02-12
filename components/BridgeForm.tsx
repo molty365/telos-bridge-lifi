@@ -6,8 +6,44 @@ import { dynamicChains, type ChainInfo } from '@/lib/chains'
 import { initLiFi, isChainAvailable, fetchQuote, getTokensForChain, getTokenAddress, executeBridge } from '@/lib/lifi'
 import { isTlosOftRoute, quoteOftSend, executeOftSend, type OftQuoteResult } from '@/lib/oft'
 
-const CHAIN_ICONS: Record<number, string> = {
-  1: '🔷', 40: '🟢', 8453: '🔵', 56: '🟡', 42161: '🔶', 137: '🟣', 43114: '🔺', 10: '🔴',
+const CHAIN_LOGOS: Record<number, string> = {
+  1: '/telos-bridge-lifi/chains/ethereum.png',
+  40: '/telos-bridge-lifi/chains/telos.png',
+  8453: '/telos-bridge-lifi/chains/base.png',
+  56: '/telos-bridge-lifi/chains/bsc.png',
+  42161: '/telos-bridge-lifi/chains/arbitrum.png',
+  137: '/telos-bridge-lifi/chains/polygon.png',
+  43114: '/telos-bridge-lifi/chains/avalanche.png',
+  10: '/telos-bridge-lifi/chains/optimism.png',
+}
+
+const TOKEN_LOGOS: Record<string, string> = {
+  TLOS: '/telos-bridge-lifi/tokens/TLOS.png',
+  USDC: '/telos-bridge-lifi/tokens/USDC.png',
+  USDT: '/telos-bridge-lifi/tokens/USDT.png',
+  ETH: '/telos-bridge-lifi/tokens/ETH.png',
+  WBTC: '/telos-bridge-lifi/tokens/WBTC.png',
+  BNB: '/telos-bridge-lifi/tokens/BNB.png',
+  AVAX: '/telos-bridge-lifi/tokens/AVAX.png',
+  MATIC: '/telos-bridge-lifi/tokens/MATIC.png',
+}
+
+function ChainLogo({ chainId, size = 20 }: { chainId: number; size?: number }) {
+  const src = CHAIN_LOGOS[chainId]
+  return src ? (
+    <img src={src} alt="" width={size} height={size} className="rounded-full" />
+  ) : (
+    <span className="text-xs">⬡</span>
+  )
+}
+
+function TokenLogo({ symbol, size = 20 }: { symbol: string; size?: number }) {
+  const src = TOKEN_LOGOS[symbol]
+  return src ? (
+    <img src={src} alt={symbol} width={size} height={size} className="rounded-full" />
+  ) : (
+    <span className="text-xs">●</span>
+  )
 }
 
 export function BridgeForm() {
@@ -225,16 +261,21 @@ export function BridgeForm() {
               <input type="number" inputMode="decimal" placeholder="0.00" value={amount}
                 onChange={e => setAmount(e.target.value)}
                 className="flex-1 bg-transparent text-[28px] font-light text-white outline-none placeholder-gray-700 min-w-0 tabular-nums" />
-              <select value={token} onChange={e => setToken(e.target.value)}
-                className="bg-[#1e1e30] border border-white/[0.06] rounded-xl px-3 py-2.5 text-sm font-semibold outline-none cursor-pointer hover:border-white/[0.12] transition-colors text-white min-w-[90px]">
-                {fromTokens.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+              <button className="flex items-center gap-2 bg-[#1e1e30] border border-white/[0.06] rounded-xl px-3 py-2 hover:border-white/[0.12] transition-colors min-w-[100px] relative">
+                <TokenLogo symbol={token} size={22} />
+                <select value={token} onChange={e => setToken(e.target.value)}
+                  className="bg-transparent text-sm font-semibold outline-none cursor-pointer text-white appearance-none pr-4">
+                  {fromTokens.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <svg className="w-3 h-3 text-gray-500 absolute right-3" viewBox="0 0 12 12" fill="none"><path d="M3 5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </button>
             </div>
-            <div className="mt-2.5">
+            <div className="mt-2.5 flex items-center gap-1.5">
+              <ChainLogo chainId={fromChain} size={14} />
               <select value={fromChain} onChange={e => setFromChain(Number(e.target.value))}
                 className="bg-transparent text-[11px] text-gray-500 outline-none cursor-pointer hover:text-gray-300 transition-colors">
                 {chains.map(c => (
-                  <option key={c.id} value={c.id}>{CHAIN_ICONS[c.id] || '⬡'} {c.name}</option>
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
@@ -271,15 +312,17 @@ export function BridgeForm() {
                   </span>
                 )}
               </div>
-              <div className="bg-[#1e1e30] border border-white/[0.06] rounded-xl px-3 py-2.5 text-sm font-semibold text-white min-w-[90px] text-center">
-                {token}
+              <div className="flex items-center gap-2 bg-[#1e1e30] border border-white/[0.06] rounded-xl px-3 py-2 min-w-[100px]">
+                <TokenLogo symbol={token} size={22} />
+                <span className="text-sm font-semibold text-white">{token}</span>
               </div>
             </div>
-            <div className="mt-2.5">
+            <div className="mt-2.5 flex items-center gap-1.5">
+              <ChainLogo chainId={toChain} size={14} />
               <select value={toChain} onChange={e => setToChain(Number(e.target.value))}
                 className="bg-transparent text-[11px] text-gray-500 outline-none cursor-pointer hover:text-gray-300 transition-colors">
                 {chains.map(c => (
-                  <option key={c.id} value={c.id}>{CHAIN_ICONS[c.id] || '⬡'} {c.name}</option>
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
