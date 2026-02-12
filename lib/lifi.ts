@@ -117,6 +117,8 @@ export async function getTokensForChain(chainId: number): Promise<string[]> {
   }
   for (const t of list) {
     const s = t.symbol.toUpperCase()
+    // Skip legacy pTokens wrappers
+    if (t.name?.toLowerCase().includes('ptokens')) continue
     if (telosSet.has(s) && !seen.has(s)) {
       result.push(t.symbol)
       seen.add(s)
@@ -135,8 +137,12 @@ export async function fetchQuote(params: {
 
   const findToken = (chainId: number, symbol: string) => {
     const list = dynamicTokensByChain[chainId] || []
-    return list.find((t: any) => t.symbol.toUpperCase() === symbol.toUpperCase()) ||
-      (symbol === 'ETH' ? list.find((t: any) => t.symbol === 'WETH') : null)
+    const matches = list.filter((t: any) => t.symbol.toUpperCase() === symbol.toUpperCase())
+    // Skip legacy pTokens wrappers — prefer native bridge tokens
+    const preferred = matches.length > 1
+      ? matches.find((t: any) => !t.name?.toLowerCase().includes('ptokens')) || matches[0]
+      : matches[0]
+    return preferred || (symbol === 'ETH' ? list.find((t: any) => t.symbol === 'WETH') : null)
   }
 
   const fromToken = findToken(params.fromChainId, params.fromTokenSymbol)
