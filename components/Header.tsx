@@ -6,7 +6,7 @@ export function Header() {
   return (
     <header className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
       <div className="flex items-center gap-3">
-        <span className="text-2xl">🌉</span>
+        <img src="/telos-bridge-lifi/telos-logo.png" alt="Telos" className="w-8 h-8 rounded-full" />
         <h1 className="text-xl font-bold bg-gradient-to-r from-telos-cyan to-telos-blue bg-clip-text text-transparent">
           Telos Bridge
         </h1>
