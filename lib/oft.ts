@@ -112,19 +112,31 @@ export async function quoteOftSend(
   const minAmountLD = amountLD - (amountLD * BigInt(Math.floor(slippage * 100))) / 10000n
   const toBytes32 = addressToBytes32(toAddress)
 
-  const [nativeFee] = await publicClient.readContract({
-    address: oftAddress,
-    abi: OFT_V1_ABI,
-    functionName: 'estimateSendFee',
-    args: [dstChainId, toBytes32, amountLD, false, DEFAULT_ADAPTER_PARAMS],
-  }) as [bigint, bigint]
+  let nativeFee: bigint
+  let feeEstimated = false
+
+  try {
+    const result = await publicClient.readContract({
+      address: oftAddress,
+      abi: OFT_V1_ABI,
+      functionName: 'estimateSendFee',
+      args: [dstChainId, toBytes32, amountLD, false, DEFAULT_ADAPTER_PARAMS],
+    }) as [bigint, bigint]
+    nativeFee = result[0]
+  } catch {
+    // estimateSendFee reverts on some RPCs (Telos especially)
+    // Use a conservative fallback: ~50 TLOS covers most LZ fees on Telos
+    // Real fee is typically 10-30 TLOS; excess is refunded by LZ
+    nativeFee = parseEther('50')
+    feeEstimated = true
+  }
 
   return {
     nativeFee,
     nativeFeeFormatted: formatEther(nativeFee),
     amountLD,
     minAmountLD,
-    route: 'LayerZero OFT',
+    route: 'LayerZero OFT' + (feeEstimated ? ' (estimated fee — excess refunded)' : ''),
     estimatedTime: 120,
   }
 }
@@ -149,12 +161,20 @@ export async function executeOftSend(
   const toBytes32 = addressToBytes32(toAddress)
 
   onStatus('Getting LayerZero fee quote...')
-  const [nativeFee] = await publicClient.readContract({
-    address: oftAddress,
-    abi: OFT_V1_ABI,
-    functionName: 'estimateSendFee',
-    args: [dstChainId, toBytes32, amountLD, false, DEFAULT_ADAPTER_PARAMS],
-  }) as [bigint, bigint]
+  let nativeFee: bigint
+  try {
+    const result = await publicClient.readContract({
+      address: oftAddress,
+      abi: OFT_V1_ABI,
+      functionName: 'estimateSendFee',
+      args: [dstChainId, toBytes32, amountLD, false, DEFAULT_ADAPTER_PARAMS],
+    }) as [bigint, bigint]
+    nativeFee = result[0]
+  } catch {
+    // Fallback: 50 TLOS covers LZ fees, excess is refunded to sender
+    nativeFee = parseEther('50')
+    onStatus('Using estimated fee (excess will be refunded)...')
+  }
 
   const feeWithBuffer = nativeFee + nativeFee / 10n
 
