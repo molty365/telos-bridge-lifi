@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAccount, useBalance, useSwitchChain, useSendTransaction, useWalletClient } from 'wagmi'
+import { useAccount, useBalance, useSwitchChain, useSendTransaction, useWalletClient, usePublicClient } from 'wagmi'
 import { dynamicChains, type ChainInfo } from '@/lib/chains'
 import { initLiFi, isChainAvailable, fetchQuote, getTokensForChain, getTokenAddress, executeBridge } from '@/lib/lifi'
+import { isTlosOftRoute, quoteOftSend, executeOftSend, type OftQuoteResult } from '@/lib/oft'
 
 export function BridgeForm() {
   const { address, chainId: walletChainId } = useAccount()
@@ -26,6 +27,10 @@ export function BridgeForm() {
   const [bridging, setBridging] = useState(false)
   const [bridgeStatus, setBridgeStatus] = useState<string | null>(null)
   const [fromTokenAddress, setFromTokenAddress] = useState<string | undefined>(undefined)
+  const [oftQuote, setOftQuote] = useState<OftQuoteResult | null>(null)
+  const publicClient = usePublicClient({ chainId: fromChain })
+
+  const isOftRoute = isTlosOftRoute(fromChain, toChain, fromToken, toToken)
 
   // Fetch token address for balance lookup
   useEffect(() => {
@@ -80,14 +85,24 @@ export function BridgeForm() {
 
   const handleQuote = useCallback(async () => {
     if (!amount || parseFloat(amount) <= 0) return
-    setQuoting(true); setError(null); setQuote(null)
+    setQuoting(true); setError(null); setQuote(null); setOftQuote(null)
     try {
-      const q = await fetchQuote({
-        fromChainId: fromChain, toChainId: toChain,
-        fromTokenSymbol: fromToken, toTokenSymbol: toToken,
-        amount, slippage, fromAddress: address,
-      })
-      setQuote(q)
+      if (isOftRoute && publicClient) {
+        // Direct TLOS OFT bridging via LayerZero
+        const oq = await quoteOftSend(
+          publicClient, fromChain, toChain, amount,
+          address || '0x0000000000000000000000000000000000000001' as `0x${string}`,
+          slippage,
+        )
+        setOftQuote(oq)
+      } else {
+        const q = await fetchQuote({
+          fromChainId: fromChain, toChainId: toChain,
+          fromTokenSymbol: fromToken, toTokenSymbol: toToken,
+          amount, slippage, fromAddress: address,
+        })
+        setQuote(q)
+      }
     } catch (e: any) {
       const msg = e.message || 'Failed to get quote'
       if (msg.includes('No available quotes') || msg.includes('404')) {
@@ -96,10 +111,11 @@ export function BridgeForm() {
         setError(msg)
       }
     } finally { setQuoting(false) }
-  }, [fromChain, toChain, fromToken, toToken, amount, slippage, address])
+  }, [fromChain, toChain, fromToken, toToken, amount, slippage, address, isOftRoute, publicClient])
 
   const handleBridge = useCallback(async () => {
-    if (!quote || !address || !walletClient) {
+    const hasQuote = quote || oftQuote
+    if (!hasQuote || !address || !walletClient) {
       setError(!address ? 'Connect your wallet first' : !walletClient ? 'Wallet not ready' : 'Get a quote first')
       return
     }
@@ -118,30 +134,42 @@ export function BridgeForm() {
         await switchChainAsync({ chainId: fromChain })
       }
 
-      setBridgeStatus('Confirm in wallet...')
-      await executeBridge(quote.raw, (status: string) => {
-        setBridgeStatus(status)
-      })
+      if (oftQuote && publicClient) {
+        // Direct OFT bridging
+        await executeOftSend(
+          walletClient, publicClient,
+          fromChain, toChain, amount,
+          address, address,
+          slippage,
+          (status: string) => setBridgeStatus(status),
+        )
+        setOftQuote(null)
+      } else if (quote) {
+        setBridgeStatus('Confirm in wallet...')
+        await executeBridge(quote.raw, (status: string) => {
+          setBridgeStatus(status)
+        })
+        setQuote(null)
+      }
 
       setBridgeStatus('✅ Bridge initiated! Funds will arrive shortly.')
-      setQuote(null)
       setAmount('')
     } catch (e: any) {
       const msg = e.message || 'Bridge failed'
-      if (msg.includes('rejected') || msg.includes('denied')) {
+      if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
         setError('Transaction rejected by user')
       } else {
         setError(msg)
       }
       setBridgeStatus(null)
     } finally { setBridging(false) }
-  }, [quote, address, walletClient, walletChainId, fromChain, switchChainAsync, amount, displayBalance, fromToken])
+  }, [quote, oftQuote, address, walletClient, publicClient, walletChainId, fromChain, toChain, switchChainAsync, amount, slippage, displayBalance, fromToken])
 
   const swap = () => {
     const fc = fromChain, ft = fromToken
     setFromChain(toChain); setToChain(fc)
     setFromToken(toToken); setToToken(ft)
-    setQuote(null); setBridgeStatus(null)
+    setQuote(null); setOftQuote(null); setBridgeStatus(null)
   }
 
   const fmt = (raw: string, dec: number) => {
@@ -214,6 +242,11 @@ export function BridgeForm() {
             {fmt(quote.toAmount, quote.toToken.decimals)}
           </div>
         )}
+        {oftQuote && (
+          <div className="bg-[#1a1a25] border border-gray-700 rounded-xl px-4 py-3 text-2xl font-mono text-telos-cyan">
+            {amount} <span className="text-sm text-gray-400">(1:1 via LayerZero)</span>
+          </div>
+        )}
       </div>
 
       {/* Slippage */}
@@ -240,6 +273,14 @@ export function BridgeForm() {
           )}
         </div>
       )}
+      {oftQuote && (
+        <div className="bg-[#0a0a0f] rounded-xl p-4 space-y-2 text-sm">
+          <div className="flex justify-between text-gray-400"><span>Route</span><span className="text-telos-cyan font-medium">⚡ {oftQuote.route}</span></div>
+          <div className="flex justify-between text-gray-400"><span>Est. time</span><span className="text-white">~1 min</span></div>
+          <div className="flex justify-between text-gray-400"><span>Transfer</span><span className="text-white">1:1 (no slippage)</span></div>
+          <div className="flex justify-between text-gray-400"><span>LZ Fee</span><span className="text-white">{parseFloat(oftQuote.nativeFeeFormatted).toFixed(6)} native</span></div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-sm text-red-400">{error}</div>
@@ -257,16 +298,21 @@ export function BridgeForm() {
         </div>
       ) : (
         <button
-          onClick={quote ? handleBridge : handleQuote}
-          disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || !ready || telosUnavailable}
+          onClick={(quote || oftQuote) ? handleBridge : handleQuote}
+          disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || !ready || (telosUnavailable && !isOftRoute)}
           className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-telos-cyan to-telos-blue text-black disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity">
-          {!ready ? 'Loading chains...' : quoting ? 'Getting Quote...' : bridging ? 'Bridging...' : quote ? 'Bridge' : 'Get Quote'}
+          {!ready ? 'Loading chains...' : quoting ? 'Getting Quote...' : bridging ? 'Bridging...' : (quote || oftQuote) ? 'Bridge' : isOftRoute ? 'Get OFT Quote' : 'Get Quote'}
         </button>
       )}
 
-      {telosUnavailable && (
+      {telosUnavailable && !isOftRoute && (
         <div className="bg-telos-purple/10 border border-telos-purple/30 rounded-xl p-3 text-sm text-center text-telos-purple">
-          ⏳ Telos on LiFi coming soon — select another chain to bridge now!
+          ⏳ Telos on LiFi coming soon — select another chain or bridge TLOS via LayerZero OFT!
+        </div>
+      )}
+      {isOftRoute && (
+        <div className="bg-telos-cyan/5 border border-telos-cyan/20 rounded-xl p-3 text-sm text-center text-telos-cyan">
+          ⚡ Direct LayerZero OFT transfer — 1:1 bridging, no slippage
         </div>
       )}
 
