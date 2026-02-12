@@ -14,6 +14,7 @@ export const SUPPORTED_CHAINS: ChainInfo[] = [
   { id: 42161, name: 'Arbitrum', icon: '/telos-bridge-lifi/chains/arbitrum.png', nativeCurrency: 'ETH' },
   { id: 137, name: 'Polygon', icon: '/telos-bridge-lifi/chains/polygon.png', nativeCurrency: 'MATIC' },
   { id: 43114, name: 'Avalanche', icon: '/telos-bridge-lifi/chains/avalanche.png', nativeCurrency: 'AVAX' },
+  { id: 10, name: 'OP Mainnet', icon: '/telos-bridge-lifi/chains/optimism.png', nativeCurrency: 'ETH' },
 ]
 
 export const CHAIN_MAP = new Map(SUPPORTED_CHAINS.map(c => [c.id, c]))
