@@ -12,6 +12,7 @@ export const TLOS_OFT_ADDRESSES: Record<number, Address> = {
   43114: '0xed667dC80a45b77305Cc395DB56D997597Dc6DdD',  // Avalanche
   137: '0x193f4A4a6ea24102F49b931DEeeb931f6E32405d',    // Polygon
   42161: '0x193f4A4a6ea24102F49b931DEeeb931f6E32405d',  // Arbitrum
+  8453: '0x7252c865c05378Ffc15120F428dd65804dD0Ce63',   // Base
 }
 
 // LayerZero V1 chain IDs
@@ -22,6 +23,7 @@ export const LZ_V1_CHAIN_IDS: Record<number, number> = {
   43114: 106,   // Avalanche
   137: 109,     // Polygon
   42161: 110,   // Arbitrum
+  8453: 184,    // Base
 }
 
 // LZ V1 OFT ABI
