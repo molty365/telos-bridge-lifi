@@ -14,6 +14,14 @@ export const LZ_V2_EIDS: Record<number, number> = {
   10: 30111,    // OP Mainnet
   42161: 30110, // Arbitrum
   137: 30109,   // Polygon
+  534352: 30214, // Scroll
+  5000: 30181,  // Mantle
+  59144: 30183, // Linea
+  1329: 30280,  // Sei
+  2222: 30177,  // Kava
+  8217: 30150,  // Kaia
+  1088: 30151,  // Metis
+  1313161554: 30211, // Aurora
 }
 
 // OFT V2 token configs on Telos
@@ -45,6 +53,10 @@ export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
       42161: '0xe8CDF27AcD73a434D661C84887215F7598e7d0d3', // Arb StargatePoolUSDC
       10: '0xcE8CcA271Ebc0533920C83d39F417ED6A0abB7D0',    // OP StargatePoolUSDC
       8453: '0x27a16dc786820B16E5c9028b75B99F6f604b5d26',  // Base StargatePoolUSDC
+      534352: '0x3Fc69CC4A842838bCDC9499178740226062b14E4', // Scroll
+      5000: '0xAc290Ad4e0c891FDc295ca4F0a6214cf6dC6acDC',   // Mantle
+      1313161554: '0x81F6138153d473E8c5EcebD3DC8Cd4903506B075', // Aurora
+      1329: '0x45d417612e177672958dC0537C45a8f8d754Ac2E',   // Sei
     },
   },
   USDT: {
@@ -62,6 +74,10 @@ export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
       137: '0xd47b03ee6d86Cf251ee7860FB2ACf9f91B9fD4d7',   // Polygon StargatePoolUSDT
       42161: '0xcE8CcA271Ebc0533920C83d39F417ED6A0abB7D0', // Arb StargatePoolUSDT
       10: '0x19cFCE47eD54a88614648DC3f19A5980097007dD',    // OP StargatePoolUSDT
+      5000: '0xB715B85682B731dB9D5063187C450095c91C57FC',   // Mantle
+      2222: '0x41A5b0470D96656Fb3e8f68A218b39AdBca3420b',   // Kava
+      1088: '0x4dCBFC0249e8d5032F89D6461218a9D2eFff5125',   // Metis
+      1329: '0x0dB9afb4C33be43a0a0e396Fd1383B4ea97aB10a',   // Sei
     },
   },
   WBTC: {
@@ -78,21 +94,22 @@ export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
       10: '0xc3f854b2970f8727d28527ece33176fac67fef48',     // OP Mainnet
     },
   },
-  WETH: {
-    symbol: 'WETH',
-    name: 'Wrapped Ether',
-    address: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9',
+  ETH: {
+    symbol: 'ETH',
+    name: 'Ether',
+    address: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9',  // StargateOFTETH on Telos
     underlyingAddress: '0xBAb93B7ad7fE8692A878B95a8e689423437cc500',
     decimals: 18,
     sharedDecimals: 6,
+    isStargate: true,
     peers: {
-      1: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9',     // ETH
-      56: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9',    // BSC
-      43114: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9', // AVAX
-      8453: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9',  // Base
-      42161: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9', // Arb
-      10: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9',    // OP
-      137: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9',   // Polygon
+      1: '0x77b2043768d28E9C9aB44E1aBfC95944bcE57931',     // ETH StargatePoolNative
+      8453: '0xdc181Bd607330aeeBEF6ea62e03e5e1Fb4B6F7C7',  // Base StargatePoolNative
+      42161: '0xA45B5130f36CDcA45667738e2a258AB09f4A5f7F', // Arb StargatePoolNative
+      10: '0xe8CDF27AcD73a434D661C84887215F7598e7d0d3',    // OP StargatePoolNative
+      59144: '0x81F6138153d473E8c5EcebD3DC8Cd4903506B075', // Linea StargatePoolNative
+      5000: '0x4c1d3Fc3fC3c177c3b633427c2F769276c547463',   // Mantle StargatePoolETH
+      534352: '0xC2b638Cb5042c1B3c5d5C969361fB50569840583', // Scroll StargatePoolNative
     },
   },
 }

@@ -17,7 +17,6 @@ const TOKEN_LOGOS: Record<string, string> = {
   USDT: '/telos-bridge-lifi/tokens/USDT.png',
   ETH: '/telos-bridge-lifi/tokens/ETH.png',
   WBTC: '/telos-bridge-lifi/tokens/WBTC.png',
-  WETH: '/telos-bridge-lifi/tokens/ETH.png',
 }
 
 export function BridgeForm() {
