@@ -1,16 +1,18 @@
 // Direct TLOS OFT bridging via LayerZero V1
-// Uses the official Telos Bridge OFT contracts (telosnetwork/telos-bridge)
+// Two OFT deployments exist — we use the newer one that includes Base
 
 import { parseEther, formatEther, type Address, type Hex } from 'viem'
 
-// TLOS OFT contract addresses (from telosnetwork/telos-bridge CONTRACTS.md + on-chain verification)
+// TLOS OFT contract addresses (newer deployment, verified on-chain)
+// Telos adapter 0x02ea... peers with all chains below
 export const TLOS_OFT_ADDRESSES: Record<number, Address> = {
-  40: '0x7b5250ad9ae6445e75e01cd4bb070aecbf8db92e',     // Telos EVM (OFT Adapter)
-  1: '0x5Aa352551d39F5ce592260e0D26818e7d780867f',      // Ethereum
-  56: '0x5e3a61B39FfffA983b1E7133e408545A21Ca1C3E',     // BSC
-  43114: '0x276B2D865Cc809DDFbC780A03fC81537a499a8e5',  // Avalanche  
-  137: '0x1cF0636abbc569fB413A20bd7964712e6b4d1161',    // Polygon
-  42161: '0x5e3a61B39FfffA983b1E7133e408545A21Ca1C3E',  // Arbitrum
+  40: '0x02ea28694ae65358be92bafef5cb8c211f33db1a',     // Telos EVM (OFT Adapter)
+  1: '0x193f4A4a6ea24102F49b931DEeeb931f6E32405d',     // Ethereum
+  56: '0x193f4A4a6ea24102F49b931DEeeb931f6E32405d',     // BSC
+  43114: '0xed667dC80a45b77305Cc395DB56D997597Dc6DdD',  // Avalanche
+  137: '0x193f4A4a6ea24102F49b931DEeeb931f6E32405d',    // Polygon
+  42161: '0x193f4A4a6ea24102F49b931DEeeb931f6E32405d',  // Arbitrum
+  8453: '0x7252c865c05378Ffc15120F428dd65804dD0CE63',   // Base
 }
 
 // LayerZero V1 chain IDs
@@ -21,26 +23,7 @@ export const LZ_V1_CHAIN_IDS: Record<number, number> = {
   43114: 106,   // Avalanche
   137: 109,     // Polygon
   42161: 110,   // Arbitrum
-}
-
-// Verified OFT peer connections (checked on-chain from Telos OFT adapter)
-const OFT_PEERS: Array<[number, number]> = [
-  [40, 1],       // Telos ↔ ETH
-  [40, 56],      // Telos ↔ BSC
-  [40, 43114],   // Telos ↔ Avalanche
-  [40, 137],     // Telos ↔ Polygon
-  [40, 42161],   // Telos ↔ Arbitrum
-  // Cross-chain peers between non-Telos chains also exist
-  [1, 56], [1, 43114], [1, 137], [1, 42161],
-  [56, 43114], [56, 137], [56, 42161],
-  [43114, 137], [43114, 42161],
-  [137, 42161],
-]
-
-function hasPeer(fromChain: number, toChain: number): boolean {
-  return OFT_PEERS.some(([a, b]) =>
-    (a === fromChain && b === toChain) || (b === fromChain && a === toChain)
-  )
+  8453: 184,    // Base
 }
 
 // LZ V1 OFT ABI
@@ -84,7 +67,6 @@ const OFT_V1_ABI = [
 // Default adapter params: version 1, 200000 gas
 const DEFAULT_ADAPTER_PARAMS = '0x00010000000000000000000000000000000000000000000000000000000000030d40' as Hex
 
-// Convert address to bytes32 (left-padded with zeros)
 function addressToBytes32(addr: Address): Hex {
   return ('0x' + addr.slice(2).toLowerCase().padStart(64, '0')) as Hex
 }
@@ -97,7 +79,7 @@ export function isTlosOftRoute(fromChain: number, toChain: number, fromToken: st
     !!TLOS_OFT_ADDRESSES[toChain] &&
     !!LZ_V1_CHAIN_IDS[fromChain] &&
     !!LZ_V1_CHAIN_IDS[toChain] &&
-    hasPeer(fromChain, toChain)
+    fromChain !== toChain
   )
 }
 
@@ -125,11 +107,9 @@ export async function quoteOftSend(
   const oftAddress = TLOS_OFT_ADDRESSES[fromChain]
   const dstChainId = LZ_V1_CHAIN_IDS[toChain]
   if (!oftAddress || !dstChainId) throw new Error('Unsupported chain for TLOS OFT')
-  if (!hasPeer(fromChain, toChain)) throw new Error('No OFT peer between these chains')
 
   const amountLD = parseEther(amount)
   const minAmountLD = amountLD - (amountLD * BigInt(Math.floor(slippage * 100))) / 10000n
-
   const toBytes32 = addressToBytes32(toAddress)
 
   const [nativeFee] = await publicClient.readContract({
@@ -168,7 +148,6 @@ export async function executeOftSend(
   const minAmountLD = amountLD - (amountLD * BigInt(Math.floor(slippage * 100))) / 10000n
   const toBytes32 = addressToBytes32(toAddress)
 
-  // Get fee quote
   onStatus('Getting LayerZero fee quote...')
   const [nativeFee] = await publicClient.readContract({
     address: oftAddress,
@@ -177,7 +156,6 @@ export async function executeOftSend(
     args: [dstChainId, toBytes32, amountLD, false, DEFAULT_ADAPTER_PARAMS],
   }) as [bigint, bigint]
 
-  // Add 10% buffer
   const feeWithBuffer = nativeFee + nativeFee / 10n
 
   const callParams = {
@@ -186,7 +164,6 @@ export async function executeOftSend(
     adapterParams: DEFAULT_ADAPTER_PARAMS,
   }
 
-  // Execute sendFrom
   onStatus('Confirm in wallet...')
   const txHash = await walletClient.writeContract({
     address: oftAddress,
