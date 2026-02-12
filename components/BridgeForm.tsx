@@ -8,7 +8,7 @@ import { isTlosOftRoute, quoteOftSend, executeOftSend, type OftQuoteResult } fro
 
 const CHAIN_LOGOS: Record<number, string> = {
   1: '/telos-bridge-lifi/chains/ethereum.png',
-  40: '/telos-bridge-lifi/chains/telos.png',
+  40: '/telos-bridge-lifi/chains/telos.svg',
   8453: '/telos-bridge-lifi/chains/base.png',
   56: '/telos-bridge-lifi/chains/bsc.png',
   42161: '/telos-bridge-lifi/chains/arbitrum.png',
@@ -23,7 +23,7 @@ const CHAIN_COLORS: Record<number, string> = {
 }
 
 const TOKEN_LOGOS: Record<string, string> = {
-  TLOS: '/telos-bridge-lifi/tokens/TLOS.png',
+  TLOS: '/telos-bridge-lifi/tokens/TLOS.svg',
   USDC: '/telos-bridge-lifi/tokens/USDC.png',
   USDT: '/telos-bridge-lifi/tokens/USDT.png',
   ETH: '/telos-bridge-lifi/tokens/ETH.png',
