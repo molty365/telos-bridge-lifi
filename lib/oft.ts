@@ -1,13 +1,13 @@
 // Direct TLOS OFT bridging via LayerZero V1
-// Two OFT deployments exist — we use the newer one that includes Base
+// NativeOFT pattern: msg.value = amount + LZ fee (no ERC20 approval needed)
+// Tested: 1 TLOS Telos→Base successful (tx 0x7da5920b...)
 
 import { parseEther, formatEther, type Address, type Hex } from 'viem'
 
-// TLOS OFT contract addresses (newer deployment, verified on-chain)
-// Telos adapter 0x02ea... peers with all chains below
+// TLOS OFT contract addresses (official from Telos Foundation)
 export const TLOS_OFT_ADDRESSES: Record<number, Address> = {
-  40: '0x02ea28694ae65358be92bafef5cb8c211f33db1a',     // Telos EVM (OFT Adapter)
-  1: '0x193f4A4a6ea24102F49b931DEeeb931f6E32405d',     // Ethereum
+  40: '0x02Ea28694Ae65358Be92bAFeF5Cb8C211f33Db1A',     // Telos EVM (NativeOFT Adapter)
+  1: '0x193f4A4a6ea24102F49b931DEeeb931f6E32405d',      // Ethereum
   56: '0x193f4A4a6ea24102F49b931DEeeb931f6E32405d',     // BSC
   43114: '0xed667dC80a45b77305Cc395DB56D997597Dc6DdD',  // Avalanche
   137: '0x193f4A4a6ea24102F49b931DEeeb931f6E32405d',    // Polygon
@@ -26,7 +26,8 @@ export const LZ_V1_CHAIN_IDS: Record<number, number> = {
   8453: 184,    // Base
 }
 
-// LZ V1 OFT ABI
+// OFTv1 ABI — NOTE: sendFrom has NO _minAmount parameter (that's OFTv2)
+// Selector: 0x695ef6bf = sendFrom(address,uint16,bytes32,uint256,(address,address,bytes))
 const OFT_V1_ABI = [
   {
     name: 'estimateSendFee',
@@ -53,7 +54,6 @@ const OFT_V1_ABI = [
       { name: '_dstChainId', type: 'uint16' },
       { name: '_toAddress', type: 'bytes32' },
       { name: '_amount', type: 'uint256' },
-      { name: '_minAmount', type: 'uint256' },
       { name: '_callParams', type: 'tuple', components: [
         { name: 'refundAddress', type: 'address' },
         { name: 'zroPaymentAddress', type: 'address' },
@@ -66,6 +66,9 @@ const OFT_V1_ABI = [
 
 // Default adapter params: version 1, 200000 gas
 const DEFAULT_ADAPTER_PARAMS = '0x00010000000000000000000000000000000000000000000000000000000000030d40' as Hex
+
+// Fallback LZ fee: 50 TLOS (real fee ~11 TLOS for Base, ~208 for ETH; excess refunded)
+const FALLBACK_FEE = parseEther('50')
 
 function addressToBytes32(addr: Address): Hex {
   return ('0x' + addr.slice(2).toLowerCase().padStart(64, '0')) as Hex
@@ -91,9 +94,9 @@ export interface OftQuoteResult {
   nativeFee: bigint
   nativeFeeFormatted: string
   amountLD: bigint
-  minAmountLD: bigint
   route: string
   estimatedTime: number
+  feeEstimated: boolean
 }
 
 export async function quoteOftSend(
@@ -102,14 +105,12 @@ export async function quoteOftSend(
   toChain: number,
   amount: string,
   toAddress: Address,
-  slippage: number = 0.5,
 ): Promise<OftQuoteResult> {
   const oftAddress = TLOS_OFT_ADDRESSES[fromChain]
   const dstChainId = LZ_V1_CHAIN_IDS[toChain]
   if (!oftAddress || !dstChainId) throw new Error('Unsupported chain for TLOS OFT')
 
   const amountLD = parseEther(amount)
-  const minAmountLD = amountLD - (amountLD * BigInt(Math.floor(slippage * 100))) / 10000n
   const toBytes32 = addressToBytes32(toAddress)
 
   let nativeFee: bigint
@@ -124,10 +125,9 @@ export async function quoteOftSend(
     }) as [bigint, bigint]
     nativeFee = result[0]
   } catch {
-    // estimateSendFee reverts on some RPCs (Telos especially)
-    // Use a conservative fallback: ~50 TLOS covers most LZ fees on Telos
-    // Real fee is typically 10-30 TLOS; excess is refunded by LZ
-    nativeFee = parseEther('50')
+    // estimateSendFee reverts on Telos RPC (oracle issue) but actual sends work
+    // Fallback: 50 TLOS covers all routes; excess is refunded by LayerZero
+    nativeFee = FALLBACK_FEE
     feeEstimated = true
   }
 
@@ -135,9 +135,9 @@ export async function quoteOftSend(
     nativeFee,
     nativeFeeFormatted: formatEther(nativeFee),
     amountLD,
-    minAmountLD,
-    route: 'LayerZero OFT' + (feeEstimated ? ' (estimated fee — excess refunded)' : ''),
+    route: 'LayerZero OFT (1:1, no slippage)' + (feeEstimated ? ' · estimated fee — excess refunded' : ''),
     estimatedTime: 120,
+    feeEstimated,
   }
 }
 
@@ -149,7 +149,7 @@ export async function executeOftSend(
   amount: string,
   fromAddress: Address,
   toAddress: Address,
-  slippage: number = 0.5,
+  _slippage: number = 0.5,
   onStatus: (msg: string) => void,
 ): Promise<{ txHash: Hex }> {
   const oftAddress = TLOS_OFT_ADDRESSES[fromChain]
@@ -157,7 +157,6 @@ export async function executeOftSend(
   if (!oftAddress || !dstChainId) throw new Error('Unsupported chain for TLOS OFT')
 
   const amountLD = parseEther(amount)
-  const minAmountLD = amountLD - (amountLD * BigInt(Math.floor(slippage * 100))) / 10000n
   const toBytes32 = addressToBytes32(toAddress)
 
   onStatus('Getting LayerZero fee quote...')
@@ -171,33 +170,41 @@ export async function executeOftSend(
     }) as [bigint, bigint]
     nativeFee = result[0]
   } catch {
-    // Fallback: 50 TLOS covers LZ fees, excess is refunded to sender
-    nativeFee = parseEther('50')
+    nativeFee = FALLBACK_FEE
     onStatus('Using estimated fee (excess will be refunded)...')
   }
 
+  // Add 10% buffer to fee; LayerZero refunds any excess
   const feeWithBuffer = nativeFee + nativeFee / 10n
 
-  const callParams = {
-    refundAddress: fromAddress,
-    zroPaymentAddress: '0x0000000000000000000000000000000000000000' as Address,
-    adapterParams: DEFAULT_ADAPTER_PARAMS,
-  }
+  // NativeOFT: msg.value = TLOS amount + LZ fee (no ERC20 approval needed)
+  const totalValue = amountLD + feeWithBuffer
 
   onStatus('Confirm in wallet...')
   const txHash = await walletClient.writeContract({
     address: oftAddress,
     abi: OFT_V1_ABI,
     functionName: 'sendFrom',
-    args: [fromAddress, dstChainId, toBytes32, amountLD, minAmountLD, callParams],
-    value: feeWithBuffer,
+    args: [
+      fromAddress,
+      dstChainId,
+      toBytes32,
+      amountLD,
+      {
+        refundAddress: fromAddress,
+        zroPaymentAddress: '0x0000000000000000000000000000000000000000' as Address,
+        adapterParams: DEFAULT_ADAPTER_PARAMS,
+      },
+    ],
+    value: totalValue,
+    gas: 500000n,
     chain: undefined,
     account: fromAddress,
   })
 
   onStatus('Transaction submitted, waiting for confirmation...')
   await publicClient.waitForTransactionReceipt({ hash: txHash })
-  onStatus('✅ TLOS bridged via LayerZero! Track at layerzeroscan.com')
+  onStatus('✅ TLOS bridged via LayerZero! Track at layerzeroscan.com/tx/' + txHash)
 
   return { txHash }
 }

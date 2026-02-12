@@ -92,7 +92,6 @@ export function BridgeForm() {
         const oq = await quoteOftSend(
           publicClient, fromChain, toChain, amount,
           address || '0x0000000000000000000000000000000000000001' as `0x${string}`,
-          slippage,
         )
         setOftQuote(oq)
       } else {
