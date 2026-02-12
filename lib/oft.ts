@@ -150,6 +150,186 @@ export async function quoteOftSend(
   }
 }
 
+// MST OFT contract addresses (ERC20 OFT, not NativeOFT)
+export const MST_OFT_ADDRESSES: Record<number, Address> = {
+  40: '0x568524DA340579887db50Ecf602Cd1BA8451b243',     // Telos
+  1: '0x0F579B2Fc0ea6449680f0941eB70c117285C9a75',      // Ethereum
+  8453: '0x88558259ceda5d8e681fedb55c50070fbd3da8f9',   // Base
+}
+
+const ERC20_ABI = [
+  {
+    name: 'allowance',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'spender', type: 'address' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'approve',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'spender', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+  {
+    name: 'balanceOf',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+] as const
+
+export function isMstOftRoute(fromChain: number, toChain: number, fromToken: string, toToken: string): boolean {
+  return (
+    fromToken.toUpperCase() === 'MST' &&
+    toToken.toUpperCase() === 'MST' &&
+    !!MST_OFT_ADDRESSES[fromChain] &&
+    !!MST_OFT_ADDRESSES[toChain] &&
+    !!LZ_V1_CHAIN_IDS[fromChain] &&
+    !!LZ_V1_CHAIN_IDS[toChain] &&
+    fromChain !== toChain
+  )
+}
+
+export function getMstSupportedChains(): number[] {
+  return Object.keys(MST_OFT_ADDRESSES).map(Number)
+}
+
+export async function quoteMstSend(
+  publicClient: any,
+  fromChain: number,
+  toChain: number,
+  amount: string,
+  toAddress: Address,
+): Promise<OftQuoteResult> {
+  const oftAddress = MST_OFT_ADDRESSES[fromChain]
+  const dstChainId = LZ_V1_CHAIN_IDS[toChain]
+  if (!oftAddress || !dstChainId) throw new Error('Unsupported chain for MST OFT')
+
+  const amountLD = parseEther(amount)
+  const toBytes32 = addressToBytes32(toAddress)
+
+  let nativeFee: bigint
+  let feeEstimated = false
+
+  try {
+    const result = await publicClient.readContract({
+      address: oftAddress,
+      abi: OFT_V1_ABI,
+      functionName: 'estimateSendFee',
+      args: [dstChainId, toBytes32, amountLD, false, DEFAULT_ADAPTER_PARAMS],
+    }) as [bigint, bigint]
+    nativeFee = result[0]
+  } catch {
+    nativeFee = FALLBACK_FEES[dstChainId] || DEFAULT_FALLBACK_FEE
+    feeEstimated = true
+  }
+
+  return {
+    nativeFee,
+    nativeFeeFormatted: formatEther(nativeFee),
+    amountLD,
+    route: 'LayerZero OFT V1 (1:1, no slippage)' + (feeEstimated ? ' · estimated fee — excess refunded' : ''),
+    estimatedTime: 120,
+    feeEstimated,
+  }
+}
+
+export async function executeMstSend(
+  walletClient: any,
+  publicClient: any,
+  fromChain: number,
+  toChain: number,
+  amount: string,
+  fromAddress: Address,
+  toAddress: Address,
+  onStatus: (msg: string) => void,
+): Promise<{ txHash: Hex }> {
+  const oftAddress = MST_OFT_ADDRESSES[fromChain]
+  const dstChainId = LZ_V1_CHAIN_IDS[toChain]
+  if (!oftAddress || !dstChainId) throw new Error('Unsupported chain for MST OFT')
+
+  const amountLD = parseEther(amount)
+  const toBytes32 = addressToBytes32(toAddress)
+
+  // Check ERC20 allowance and approve if needed
+  onStatus('Checking MST allowance...')
+  const currentAllowance = await publicClient.readContract({
+    address: oftAddress,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: [fromAddress, oftAddress],
+  }) as bigint
+
+  if (currentAllowance < amountLD) {
+    onStatus('Approving MST spend — confirm in wallet...')
+    const approveTx = await walletClient.writeContract({
+      address: oftAddress,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [oftAddress, amountLD],
+      chain: undefined,
+      account: fromAddress,
+    })
+    await publicClient.waitForTransactionReceipt({ hash: approveTx })
+    onStatus('Approved ✓')
+  }
+
+  onStatus('Getting LayerZero fee quote...')
+  let nativeFee: bigint
+  try {
+    const result = await publicClient.readContract({
+      address: oftAddress,
+      abi: OFT_V1_ABI,
+      functionName: 'estimateSendFee',
+      args: [dstChainId, toBytes32, amountLD, false, DEFAULT_ADAPTER_PARAMS],
+    }) as [bigint, bigint]
+    nativeFee = result[0]
+  } catch {
+    nativeFee = FALLBACK_FEES[dstChainId] || DEFAULT_FALLBACK_FEE
+    onStatus('Using estimated fee (excess will be refunded)...')
+  }
+
+  const feeWithBuffer = nativeFee + nativeFee / 10n
+
+  // ERC20 OFT: msg.value = ONLY LZ fee (not amount + fee)
+  onStatus('Confirm bridge in wallet...')
+  const txHash = await walletClient.writeContract({
+    address: oftAddress,
+    abi: OFT_V1_ABI,
+    functionName: 'sendFrom',
+    args: [
+      fromAddress,
+      dstChainId,
+      toBytes32,
+      amountLD,
+      {
+        refundAddress: fromAddress,
+        zroPaymentAddress: '0x0000000000000000000000000000000000000000' as Address,
+        adapterParams: DEFAULT_ADAPTER_PARAMS,
+      },
+    ],
+    value: feeWithBuffer,
+    gas: 500000n,
+    chain: undefined,
+    account: fromAddress,
+  })
+
+  onStatus('Transaction submitted, waiting for confirmation...')
+  await publicClient.waitForTransactionReceipt({ hash: txHash })
+  onStatus('✅ MST bridged via LayerZero! Track at layerzeroscan.com/tx/' + txHash)
+
+  return { txHash }
+}
+
 export async function executeOftSend(
   walletClient: any,
   publicClient: any,

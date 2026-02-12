@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAccount, useBalance, useSwitchChain, useWalletClient, usePublicClient } from 'wagmi'
 import { SUPPORTED_CHAINS, CHAIN_MAP } from '@/lib/chains'
-import { isTlosOftRoute, quoteOftSend, executeOftSend, type OftQuoteResult } from '@/lib/oft'
+import { isTlosOftRoute, quoteOftSend, executeOftSend, isMstOftRoute, quoteMstSend, executeMstSend, getMstSupportedChains, type OftQuoteResult } from '@/lib/oft'
 import { isOftV2Route, getAvailableOftV2Tokens, quoteOftV2Send, executeOftV2Send, OFT_V2_TOKENS, type OftV2QuoteResult } from '@/lib/oft-v2'
 
 const CHAIN_COLORS: Record<number, string> = {
@@ -17,6 +17,7 @@ const TOKEN_LOGOS: Record<string, string> = {
   USDT: '/telos-bridge-lifi/tokens/USDT.png',
   ETH: '/telos-bridge-lifi/tokens/ETH.png',
   WBTC: '/telos-bridge-lifi/tokens/WBTC.png',
+  MST: '/telos-bridge-lifi/tokens/MST.svg',
 }
 
 export function BridgeForm() {
@@ -42,7 +43,8 @@ export function BridgeForm() {
   const { data: nativeBalance } = useBalance({ address, chainId: fromChain })
 
   const isOft = isTlosOftRoute(fromChain, toChain, token, token)
-  const isV2 = !isOft && isOftV2Route(token, fromChain, toChain)
+  const isMst = isMstOftRoute(fromChain, toChain, token, token)
+  const isV2 = !isOft && !isMst && isOftV2Route(token, fromChain, toChain)
   const hasQuote = !!(oftQuote || v2Quote)
   const wrongNetwork = address && walletChainId !== fromChain
   const displayBalance = nativeBalance // TODO: add ERC20 balance for WBTC/WETH
@@ -53,6 +55,10 @@ export function BridgeForm() {
   // Build token list: TLOS (always) + V2 OFT tokens available for this route
   const availableTokens = useCallback(() => {
     const tokens = ['TLOS']
+    const mstChains = getMstSupportedChains()
+    if (mstChains.includes(fromChain) && mstChains.includes(toChain)) {
+      tokens.push('MST')
+    }
     const v2tokens = getAvailableOftV2Tokens(fromChain, toChain)
     tokens.push(...v2tokens)
     return tokens
@@ -75,17 +81,21 @@ export function BridgeForm() {
         const oq = await quoteOftSend(publicClient, fromChain, toChain, amount,
           address || '0x0000000000000000000000000000000000000001' as `0x${string}`)
         setOftQuote(oq)
+      } else if (isMst) {
+        const mq = await quoteMstSend(publicClient, fromChain, toChain, amount,
+          address || '0x0000000000000000000000000000000000000001' as `0x${string}`)
+        setOftQuote(mq)
       } else if (isV2) {
         const vq = await quoteOftV2Send(publicClient, token, fromChain, toChain, amount,
           address || '0x0000000000000000000000000000000000000001' as `0x${string}`)
         setV2Quote(vq)
       } else {
-        setError(`${token} cannot be bridged on this route.`)
+        setError(`${token} cannot be bridged on this route`)
       }
     } catch (e: any) {
       setError(e.message || 'Failed to get quote')
     } finally { setQuoting(false) }
-  }, [fromChain, toChain, token, amount, address, publicClient, isOft, isV2])
+  }, [fromChain, toChain, token, amount, address, publicClient, isOft, isMst, isV2])
 
   // Auto-quote with debounce
   useEffect(() => {
@@ -111,7 +121,11 @@ export function BridgeForm() {
         setBridgeStatus('Switching network…')
         await switchChainAsync({ chainId: fromChain })
       }
-      if (oftQuote) {
+      if (oftQuote && isMst) {
+        await executeMstSend(walletClient, publicClient, fromChain, toChain, amount,
+          address, address, (s: string) => setBridgeStatus(s))
+        setOftQuote(null)
+      } else if (oftQuote) {
         await executeOftSend(walletClient, publicClient, fromChain, toChain, amount,
           address, address, slippage, (s: string) => setBridgeStatus(s))
         setOftQuote(null)
@@ -127,7 +141,7 @@ export function BridgeForm() {
       setError(msg.includes('rejected') || msg.includes('denied') ? 'Transaction rejected' : msg)
       setBridgeStatus(null)
     } finally { setBridging(false) }
-  }, [oftQuote, v2Quote, address, walletClient, publicClient, walletChainId, fromChain, toChain, switchChainAsync, amount, slippage, displayBalance, token])
+  }, [oftQuote, v2Quote, address, walletClient, publicClient, walletChainId, fromChain, toChain, switchChainAsync, amount, slippage, displayBalance, token, isMst])
 
   const swap = () => {
     const fc = fromChain
@@ -279,7 +293,7 @@ export function BridgeForm() {
             <div className="flex justify-between">
               <span>Via</span>
               <span className="text-telos-cyan font-medium">
-                ⚡ {isOft ? 'LayerZero OFT V1' : OFT_V2_TOKENS[token]?.isStargate ? 'Stargate (LayerZero V2)' : 'LayerZero OFT V2'}
+                ⚡ {(isOft || isMst) ? 'LayerZero OFT V1' : OFT_V2_TOKENS[token]?.isStargate ? 'Stargate (LayerZero V2)' : 'LayerZero OFT V2'}
               </span>
             </div>
             <div className="flex justify-between"><span>Rate</span><span className="text-gray-300">{OFT_V2_TOKENS[token]?.isStargate ? '~1:1 (Stargate fee applied)' : '1:1 — no slippage'}</span></div>
@@ -319,7 +333,7 @@ export function BridgeForm() {
           </div>
         ) : (
           <button onClick={hasQuote ? handleBridge : doQuote}
-            disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || fromChain === toChain || (!isOft && !isV2)}
+            disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || fromChain === toChain || (!isOft && !isMst && !isV2)}
             className="w-full py-5 rounded-xl font-semibold text-lg bg-gradient-to-r from-telos-cyan via-telos-blue to-telos-purple text-white disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 transition-all shadow-lg shadow-telos-cyan/10">
             {quoting ? 'Getting quote...' : bridging ? 'Bridging...' : hasQuote ? `⚡ Bridge ${token}` : 'Get Quote'}
           </button>
