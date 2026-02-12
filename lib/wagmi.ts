@@ -5,7 +5,7 @@ import { mainnet, telos, base, bsc, arbitrum, polygon, avalanche, optimism } fro
 
 export const config = getDefaultConfig({
   appName: 'Telos Bridge',
-  projectId: 'telos-bridge-lifi', // WalletConnect project ID placeholder
+  projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID || 'e77cdab1b5834264860090a1d10b82b4', // TODO: replace with own WalletConnect Cloud project ID
   chains: [mainnet, telos, base, bsc, arbitrum, polygon, avalanche, optimism],
   ssr: true,
 })

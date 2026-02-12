@@ -1,5 +1,5 @@
 import { createConfig, getChains, getTokens, getQuote, getConnections } from '@lifi/sdk'
-import { setDynamicChains, setDynamicTokens, type ChainInfo } from './chains'
+import { setDynamicChains, setDynamicTokens, PRIORITY_CHAINS, type ChainInfo } from './chains'
 
 createConfig({ integrator: 'telos-bridge' })
 
@@ -51,15 +51,20 @@ export async function initLiFi() {
     } else {
       // Telos not on LiFi yet — use Stargate token set as reference
       telosTokenSymbols = ['USDC', 'USDT', 'ETH', 'WETH', 'WBTC', 'TLOS']
-      // Show chains that have these tokens
-      connectedChainIds = chains
-        .filter(c => {
-          const ct = allTokens[c.id] || []
-          return ct.some((t: any) => telosTokenSymbols.includes(t.symbol.toUpperCase()))
-        })
-        .map(c => c.id)
-      // Ensure Telos is in the list
-      if (!connectedChainIds.includes(TELOS_CHAIN_ID)) connectedChainIds.push(TELOS_CHAIN_ID)
+
+      // Only show priority chains (not all 50+ that happen to have USDC)
+      const prioritySet = new Set(PRIORITY_CHAINS)
+      connectedChainIds = [TELOS_CHAIN_ID, ...PRIORITY_CHAINS.filter(id => id !== TELOS_CHAIN_ID && chainMap[id])]
+
+      // Inject hardcoded Telos tokens so the dropdown isn't empty
+      allTokens[TELOS_CHAIN_ID] = [
+        { symbol: 'TLOS', address: '0x0000000000000000000000000000000000000000', decimals: 18, name: 'Telos', logoURI: '' },
+        { symbol: 'USDC', address: '0xF1815bd50389c46847f0Bda824eC8da914045D14', decimals: 6, name: 'USD Coin', logoURI: '' },
+        { symbol: 'USDT', address: '0x674843C06FF83502ddb4D37c2E09C01cdA38cbc8', decimals: 6, name: 'Tether USD', logoURI: '' },
+        { symbol: 'ETH', address: '0xA0fB8cd450c8Fd3a11901876cD5f17eB47C6bc50', decimals: 18, name: 'Ethereum', logoURI: '' },
+        { symbol: 'WBTC', address: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c', decimals: 8, name: 'Wrapped Bitcoin', logoURI: '' },
+      ]
+      setDynamicTokens(allTokens)
     }
 
     // Build chain infos for only connected chains
