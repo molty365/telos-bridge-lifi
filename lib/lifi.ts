@@ -98,6 +98,9 @@ export function getTelosTokens(): string[] {
   return telosTokenSymbols
 }
 
+// Chains that have TLOS OFT contracts (can bridge TLOS directly via LayerZero)
+const OFT_CHAIN_IDS = new Set([40, 1, 56, 43114, 137, 42161, 8453])
+
 export async function getTokensForChain(chainId: number): Promise<string[]> {
   if (!inited) await initLiFi()
   const { dynamicTokensByChain } = await import('./chains')
@@ -107,8 +110,14 @@ export async function getTokensForChain(chainId: number): Promise<string[]> {
   const telosSet = new Set(telosTokenSymbols.map(s => s.toUpperCase()))
   const result: string[] = []
   const seen = new Set<string>()
-  const priority = ['USDC', 'USDT', 'ETH', 'WETH', 'WBTC', 'TLOS']
 
+  // Always inject TLOS first on OFT-supported chains (bridgeable via LayerZero)
+  if (OFT_CHAIN_IDS.has(chainId)) {
+    result.push('TLOS')
+    seen.add('TLOS')
+  }
+
+  const priority = ['USDC', 'USDT', 'ETH', 'WETH', 'WBTC']
   for (const sym of priority) {
     if (telosSet.has(sym) && list.some((t: any) => t.symbol.toUpperCase() === sym) && !seen.has(sym)) {
       result.push(sym)
@@ -117,7 +126,6 @@ export async function getTokensForChain(chainId: number): Promise<string[]> {
   }
   for (const t of list) {
     const s = t.symbol.toUpperCase()
-    // Skip legacy pTokens wrappers
     if (t.name?.toLowerCase().includes('ptokens')) continue
     if (telosSet.has(s) && !seen.has(s)) {
       result.push(t.symbol)
