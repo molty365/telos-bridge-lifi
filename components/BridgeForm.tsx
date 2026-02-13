@@ -7,7 +7,7 @@ import { isTlosOftRoute, quoteOftSend, executeOftSend, isMstOftRoute, quoteMstSe
 import { isOftV2Route, getAvailableOftV2Tokens, quoteOftV2Send, executeOftV2Send, OFT_V2_TOKENS, type OftV2QuoteResult } from '@/lib/oft-v2'
 import { AmountInput } from './AmountInput'
 import { ChainSelectorModal } from './ChainSelectorModal'
-import { TokenSelector } from './TokenSelector'
+import { TokenSelectorModal } from './TokenSelectorModal'
 import { LoadingSpinner, SkeletonLoader } from './LoadingSpinner'
 import { QuoteDisplay } from './QuoteDisplay'
 import { BridgeSettings } from './BridgeSettings'
@@ -261,7 +261,7 @@ export function BridgeForm() {
             onQuarter={() => { if (displayBalance) setAmount((parseFloat(displayBalance.formatted) / 4).toString()) }}
           />
           
-          <TokenSelector 
+          <TokenSelectorModal 
             selectedToken={token}
             tokens={tokenList}
             onTokenChange={(newToken) => { setToken(newToken); clearQuotes() }}
