@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { MobileModal, MobileInput, MobileButton } from './MobileOptimizations'
 
 interface Chain {
   id: number

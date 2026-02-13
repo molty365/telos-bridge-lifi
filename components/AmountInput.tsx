@@ -56,12 +56,12 @@ export function AmountInput({
             </span>
           </div>
           
-          <div className="flex gap-1.5">
+          <div className="flex gap-2">
             {quickAmounts.map(({ label, action, highlight }) => (
               <button 
                 key={label}
                 onClick={action} 
-                className={`text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all duration-200 ${
+                className={`text-xs px-3 py-2 sm:px-2.5 sm:py-1.5 rounded-lg font-medium transition-all duration-200 touch-manipulation active:scale-95 ${
                   highlight
                     ? 'text-telos-cyan bg-telos-cyan/10 border border-telos-cyan/30 hover:bg-telos-cyan/15 hover:border-telos-cyan/50'
                     : 'text-gray-500 bg-white/[0.03] hover:text-gray-300 hover:bg-white/[0.08] border border-transparent hover:border-gray-600/30'

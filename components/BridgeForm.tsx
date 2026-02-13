@@ -11,6 +11,7 @@ import { TokenSelectorModal } from './TokenSelectorModal'
 import { LoadingSpinner, SkeletonLoader } from './LoadingSpinner'
 import { QuoteDisplay } from './QuoteDisplay'
 import { BridgeSettings } from './BridgeSettings'
+import { ErrorDisplay, createError, type ErrorInfo } from './ErrorDisplay'
 
 // Token logos for the "You receive" section
 const TOKEN_LOGOS: Record<string, string> = {
@@ -36,7 +37,7 @@ export function BridgeForm() {
   const [quoting, setQuoting] = useState(false)
   const [oftQuote, setOftQuote] = useState<OftQuoteResult | null>(null)
   const [v2Quote, setV2Quote] = useState<OftV2QuoteResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<ErrorInfo | null>(null)
   const [bridging, setBridging] = useState(false)
   const [bridgeStatus, setBridgeStatus] = useState<string | null>(null)
   const publicClient = usePublicClient({ chainId: fromChain })
@@ -128,10 +129,12 @@ export function BridgeForm() {
           address || '0x0000000000000000000000000000000000000001' as `0x${string}`)
         setV2Quote(vq)
       } else {
-        setError(`${token} cannot be bridged on this route`)
+        setError(createError('unsupported_route', `${token} cannot be bridged on this route`, 
+          `No available bridge routes found for ${token} from ${chainName(fromChain)} to ${chainName(toChain)}`))
       }
     } catch (e: any) {
-      setError(e.message || 'Failed to get quote')
+      const message = e.message || 'Failed to get quote'
+      setError(createError('quote_failed', 'Unable to get bridge quote', message))
     } finally { setQuoting(false) }
   }, [fromChain, toChain, token, amount, address, publicClient, isOft, isMst, isV2])
 
@@ -145,12 +148,19 @@ export function BridgeForm() {
   }, [amount, fromChain, toChain, token])
 
   const handleBridge = useCallback(async () => {
-    if (!hasQuote || !address || !walletClient || !publicClient) {
-      setError(!address ? 'Connect your wallet first' : 'Get a quote first')
+    if (!address) {
+      setError(createError('wallet_not_connected', 'Connect your wallet first', 
+        'A wallet connection is required to bridge tokens'))
+      return
+    }
+    if (!hasQuote || !walletClient || !publicClient) {
+      setError(createError('quote_failed', 'Get a quote first', 
+        'A bridge quote is required before executing the transaction'))
       return
     }
     if (displayBalance && parseFloat(amount) > parseFloat(displayBalance.formatted)) {
-      setError(`Insufficient ${token} balance`)
+      setError(createError('insufficient_balance', `Insufficient ${token} balance`, 
+        `You need at least ${amount} ${token} but only have ${displayBalance.formatted} ${token}`))
       return
     }
     setBridging(true); setError(null); setBridgeStatus('Preparing…')
@@ -176,7 +186,14 @@ export function BridgeForm() {
       setAmount('')
     } catch (e: any) {
       const msg = e.message || 'Bridge failed'
-      setError(msg.includes('rejected') || msg.includes('denied') ? 'Transaction rejected' : msg)
+      if (msg.includes('rejected') || msg.includes('denied') || msg.includes('cancelled')) {
+        setError(createError('transaction_rejected', 'Transaction rejected', 
+          'You declined the transaction in your wallet'))
+      } else if (msg.includes('network') || msg.includes('RPC')) {
+        setError(createError('rpc_error', 'Network error', msg))
+      } else {
+        setError(createError('bridge_failed', 'Bridge transaction failed', msg))
+      }
       setBridgeStatus(null)
     } finally { setBridging(false) }
   }, [oftQuote, v2Quote, address, walletClient, publicClient, walletChainId, fromChain, toChain, switchChainAsync, amount, slippage, displayBalance, token, isMst])
@@ -185,6 +202,32 @@ export function BridgeForm() {
     const fc = fromChain
     setFromChain(toChain); setToChain(fc)
     clearQuotes()
+  }
+
+  // Error recovery handlers
+  const handleRetry = () => {
+    setError(null)
+    if (hasQuote) {
+      handleBridge()
+    } else {
+      doQuote()
+    }
+  }
+
+  const handleDismissError = () => setError(null)
+
+  const handleConnectWallet = () => {
+    setError(null)
+    // The connect wallet button in the UI will handle the actual connection
+  }
+
+  const handleSwitchNetwork = async (chainId: number) => {
+    try {
+      setError(null)
+      await switchChainAsync({ chainId })
+    } catch (e: any) {
+      setError(createError('network_mismatch', 'Failed to switch network', e.message))
+    }
   }
 
   const handleMax = () => { if (displayBalance) setAmount(displayBalance.formatted) }
@@ -204,11 +247,11 @@ export function BridgeForm() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Toolbar icons above the bridge frame */}
-      <div className="flex justify-end gap-2 sm:gap-3 pr-1">
-        <button className="w-9 h-9 rounded-full bg-[#1a1a28]/80 border border-gray-800/50 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-all" title="Transaction History">
+      <div className="flex justify-end gap-3 sm:gap-3 pr-1">
+        <button className="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-[#1a1a28]/80 border border-gray-800/50 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-all active:scale-95" title="Transaction History">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </button>
-        <button onClick={() => setShowSettings(!showSettings)} className="w-9 h-9 rounded-full bg-[#1a1a28]/80 border border-gray-800/50 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-all" title="Settings">
+        <button onClick={() => setShowSettings(!showSettings)} className="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-[#1a1a28]/80 border border-gray-800/50 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-all active:scale-95" title="Settings">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
       </div>
@@ -227,7 +270,7 @@ export function BridgeForm() {
 
           <button 
             onClick={swap}
-            className="w-10 h-10 sm:w-10 sm:h-10 rounded-full bg-[#1a1a28] border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 hover:rotate-180 duration-300 text-gray-400 hover:text-telos-cyan shrink-0 group active:scale-95 self-center sm:self-auto"
+            className="w-12 h-12 sm:w-10 sm:h-10 rounded-full bg-[#1a1a28] border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 hover:rotate-180 duration-300 text-gray-400 hover:text-telos-cyan shrink-0 group active:scale-95 self-center sm:self-auto touch-manipulation"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="group-hover:scale-110 transition-transform">
               <path d="M10 2L13 5L10 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -305,10 +348,15 @@ export function BridgeForm() {
 
         {/* Route details now included in QuoteDisplay component */}
 
-        {/* Error */}
-        {error && (
-          <div className="bg-red-500/8 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400">{error}</div>
-        )}
+        {/* Enhanced Error Display */}
+        <ErrorDisplay
+          error={error}
+          onRetry={handleRetry}
+          onDismiss={handleDismissError}
+          onConnectWallet={handleConnectWallet}
+          onSwitchNetwork={handleSwitchNetwork}
+          chainName={chainName}
+        />
 
         {/* Status */}
         {bridgeStatus && (
