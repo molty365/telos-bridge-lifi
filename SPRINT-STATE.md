@@ -3,9 +3,9 @@
 > Update it after every cycle with what you did and what's next.
 
 ## Current Status
-- **Cycle:** 8 completed, working on cycle 9
+- **Cycle:** 9 completed, working on cycle 10
 - **Branch:** `design-sprint`
-- **Last commit:** `4511d6b` — cycle-8: transaction progress stepper with visual feedback
+- **Last commit:** `9f779d3` — cycle-9: recent transactions panel with localStorage persistence
 
 ## What's Been Done
 
@@ -90,6 +90,18 @@
 - Responsive design optimized for mobile and desktop viewing
 - Real-time progress updates that respond to bridge execution status
 - Accessibility features including reduced motion support
+
+### Cycle 9 ✅
+- New `RecentTransactions.tsx` component with modal-based transaction history display
+- LocalStorage persistence system storing up to 50 recent bridge transactions  
+- Real-time transaction tracking and status updates during bridge execution
+- Visual status indicators with color coding: completed (green), pending (yellow), failed (red)
+- Chain route visualization showing from/to chains with directional flow and icons
+- Clickable transaction hash links that open relevant block explorers in new tabs
+- Time-based relative timestamps with human-readable formatting (just now, 5m ago, etc.)
+- Clear history functionality and elegant empty state design for new users
+- Mobile-optimized modal design with backdrop blur and smooth entrance animations
+- Seamless integration with bridge flow for automatic transaction logging and updates
 
 ## Competitive Insights (carry forward)
 Study these bridges for inspiration:

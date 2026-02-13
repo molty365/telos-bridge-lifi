@@ -14,6 +14,7 @@ import { BridgeSettings } from './BridgeSettings'
 import { ErrorDisplay, createError, type ErrorInfo } from './ErrorDisplay'
 import { TransactionStepper, type TransactionStep } from './TransactionStepper'
 import { RecentTransactions, addTransaction, updateTransaction, type BridgeTransaction } from './RecentTransactions'
+import { SuccessCelebration } from './SuccessCelebration'
 import { useAnimation } from './AnimationProvider'
 
 // Token logos for the "You receive" section
@@ -48,6 +49,7 @@ export function BridgeForm() {
   const [transactionHash, setTransactionHash] = useState<string | undefined>()
   const [currentTransactionId, setCurrentTransactionId] = useState<string | undefined>()
   const [showRecentTransactions, setShowRecentTransactions] = useState(false)
+  const [showSuccessCelebration, setShowSuccessCelebration] = useState(false)
   const publicClient = usePublicClient({ chainId: fromChain })
   const quoteTimeout = useRef<NodeJS.Timeout | null>(null)
 
@@ -121,6 +123,7 @@ export function BridgeForm() {
   const clearQuotes = () => { 
     setOftQuote(null); setV2Quote(null); setError(null); setBridgeStatus(null);
     setTransactionStep('idle'); setTransactionHash(undefined); setCurrentTransactionId(undefined);
+    setShowSuccessCelebration(false);
   }
 
   const doQuote = useCallback(async () => {
@@ -210,6 +213,8 @@ export function BridgeForm() {
         if (transaction.id) {
           updateTransaction(transaction.id, { status: 'completed' })
         }
+        // Trigger success celebration
+        setShowSuccessCelebration(true)
       }
     }
 
@@ -233,6 +238,7 @@ export function BridgeForm() {
       }
       setBridgeStatus('✅ Bridge complete! Funds arriving shortly.')
       setTransactionStep('completed')
+      setShowSuccessCelebration(true)
       setAmount('')
     } catch (e: any) {
       const msg = e.message || 'Bridge failed'
@@ -486,6 +492,12 @@ export function BridgeForm() {
       <RecentTransactions
         isOpen={showRecentTransactions}
         onClose={() => setShowRecentTransactions(false)}
+      />
+
+      {/* Success Celebration Animation */}
+      <SuccessCelebration
+        isVisible={showSuccessCelebration}
+        onComplete={() => setShowSuccessCelebration(false)}
       />
     </div>
   )
