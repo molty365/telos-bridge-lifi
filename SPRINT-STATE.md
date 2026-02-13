@@ -3,9 +3,9 @@
 > Update it after every cycle with what you did and what's next.
 
 ## Current Status
-- **Cycle:** 3 completed, working on cycle 4
+- **Cycle:** 4 completed, working on cycle 5
 - **Branch:** `design-sprint`
-- **Last commit:** `f29b17a` — cycle-3: beautiful chain & token selector modals
+- **Last commit:** `76025fe` — cycle-4: enhanced token selector modal
 
 ## What's Been Done
 
@@ -35,6 +35,16 @@
 - Inspired by Jumper/LI.FI modern bridge UX patterns
 - Improved mobile touch experience and accessibility
 - Maintained backward compatibility with existing chain/token data
+
+### Cycle 4 ✅
+- Enhanced `TokenSelectorModal.tsx` with advanced categorization
+- Added token categories: Native, Stablecoin, Wrapped, Gaming  
+- Rich token information with descriptions and brand colors
+- Advanced search functionality (symbol, name, description)
+- Consistent modal design pattern with ChainSelector
+- Graceful single-token fallback for routes with one option
+- Seamless integration into BridgeForm workflow
+- Bundle optimization maintained: 310kB (under 350kB target)
 
 ## Competitive Insights (carry forward)
 Study these bridges for inspiration:
