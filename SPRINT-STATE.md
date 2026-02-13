@@ -5,7 +5,7 @@
 ## Current Status
 - **Cycle:** 3 completed, working on cycle 4
 - **Branch:** `design-sprint`
-- **Last commit:** `dc087bc` — cycle-3: transaction progress stepper + modal
+- **Last commit:** `f29b17a` — cycle-3: beautiful chain & token selector modals
 
 ## What's Been Done
 
@@ -27,14 +27,14 @@
 - Progressive loading states with route finding animation
 
 ### Cycle 3 ✅
-- New `TransactionProgress.tsx` component with animated stepper (Submit → Confirm → Bridge → Complete)
-- New `TransactionModal.tsx` overlay with backdrop blur and transitions  
-- Integrated modal into BridgeForm bridge flow with state management
-- Added transaction step tracking and error handling
-- Success celebration animation with confetti effect
-- Real-time countdown timer for estimated completion
-- Replaced inline status displays with polished modal experience
-- Dependencies: @headlessui/react and @heroicons/react
+- New `ChainSelectorModal.tsx` — beautiful grid-based chain selection with search
+- New `TokenSelectorModal.tsx` — elegant token picker with logos and search  
+- Replaced native `<select>` dropdowns with gorgeous modal interfaces
+- Chain modal: grid layout, brand colors, hover effects, search functionality
+- Token modal: token logos, descriptions, smooth animations, conditional search
+- Inspired by Jumper/LI.FI modern bridge UX patterns
+- Improved mobile touch experience and accessibility
+- Maintained backward compatibility with existing chain/token data
 
 ## Competitive Insights (carry forward)
 Study these bridges for inspiration:
@@ -44,8 +44,8 @@ Study these bridges for inspiration:
 - **Relay** — instant feel, progress animation
 
 ## Priority Queue (what to build next)
-1. Chain selector modal/dropdown (grid of chain logos instead of native select)
-2. Token search/selector modal  
+1. ✅ Chain selector modal/dropdown (grid of chain logos instead of native select)
+2. ✅ Token search/selector modal  
 3. Mobile responsive pass
 4. Better error states with recovery actions
 5. Animations: page load, card transitions, number counting
