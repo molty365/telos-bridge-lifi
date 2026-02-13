@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAccount, useBalance, useSwitchChain, useWalletClient, usePublicClient } from 'wagmi'
 import { SUPPORTED_CHAINS, CHAIN_MAP } from '@/lib/chains'
-import { isTlosOftRoute, quoteOftSend, executeOftSend, isMstOftRoute, quoteMstSend, executeMstSend, getMstSupportedChains, type OftQuoteResult } from '@/lib/oft'
+import { isTlosOftRoute, quoteOftSend, executeOftSend, isMstOftRoute, quoteMstSend, executeMstSend, getMstSupportedChains, TLOS_OFT_ADDRESSES, MST_OFT_ADDRESSES, type OftQuoteResult } from '@/lib/oft'
 import { isOftV2Route, getAvailableOftV2Tokens, quoteOftV2Send, executeOftV2Send, OFT_V2_TOKENS, type OftV2QuoteResult } from '@/lib/oft-v2'
 
 const CHAIN_COLORS: Record<number, string> = {
@@ -52,6 +52,27 @@ export function BridgeForm() {
   const chainName = (id: number) => CHAIN_MAP.get(id)?.name || `Chain ${id}`
   const chainIcon = (id: number) => CHAIN_MAP.get(id)?.icon
 
+  // Get chains that support the selected token
+  const getChainsForToken = useCallback((tok: string) => {
+    const chainIds = new Set<number>()
+    // TLOS V1 OFT chains
+    if (tok === 'TLOS') {
+      Object.keys(TLOS_OFT_ADDRESSES).forEach(id => chainIds.add(Number(id)))
+    }
+    // MST V1 OFT chains
+    else if (tok === 'MST') {
+      Object.keys(MST_OFT_ADDRESSES).forEach(id => chainIds.add(Number(id)))
+    }
+    // V2 OFT tokens: Telos + peer chains
+    else if (OFT_V2_TOKENS[tok]) {
+      chainIds.add(40) // Telos always
+      Object.keys(OFT_V2_TOKENS[tok].peers).forEach(id => chainIds.add(Number(id)))
+    }
+    return SUPPORTED_CHAINS.filter(c => chainIds.has(c.id))
+  }, [])
+
+  const filteredChains = getChainsForToken(token)
+
   // Build token list: TLOS (always) + V2 OFT tokens available for this route
   const availableTokens = useCallback(() => {
     const tokens = ['TLOS']
@@ -70,6 +91,18 @@ export function BridgeForm() {
   useEffect(() => {
     if (!tokenList.includes(token)) setToken('TLOS')
   }, [tokenList, token])
+
+  // Reset chains if not valid for selected token
+  useEffect(() => {
+    const validIds = filteredChains.map(c => c.id)
+    if (!validIds.includes(fromChain)) {
+      setFromChain(validIds[0] || 40)
+    }
+    if (!validIds.includes(toChain) || toChain === fromChain) {
+      const other = validIds.find(id => id !== fromChain)
+      if (other) setToChain(other)
+    }
+  }, [token, filteredChains])
 
   const clearQuotes = () => { setOftQuote(null); setV2Quote(null); setError(null); setBridgeStatus(null) }
 
@@ -189,7 +222,7 @@ export function BridgeForm() {
               </div>
               <select value={fromChain} onChange={e => handleFromChain(Number(e.target.value))}
                 className="bg-transparent text-white font-semibold text-sm sm:text-base outline-none cursor-pointer flex-1 min-w-0 truncate">
-                {SUPPORTED_CHAINS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {filteredChains.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
           </div>
@@ -208,7 +241,7 @@ export function BridgeForm() {
               </div>
               <select value={toChain} onChange={e => handleToChain(Number(e.target.value))}
                 className="bg-transparent text-white font-semibold text-sm sm:text-base outline-none cursor-pointer flex-1 min-w-0 truncate">
-                {SUPPORTED_CHAINS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {filteredChains.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
           </div>
@@ -346,7 +379,7 @@ export function BridgeForm() {
           ⚡ LayerZero + Stargate — cross-chain bridging, excess fees refunded
         </span>
       </div>
-      <p className="text-center text-[10px] text-gray-600">{SUPPORTED_CHAINS.length} chains · LayerZero OFT</p>
+      <p className="text-center text-[10px] text-gray-600">{filteredChains.length} chains · LayerZero OFT</p>
     </div>
   )
 }
