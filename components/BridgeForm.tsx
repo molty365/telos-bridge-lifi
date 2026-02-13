@@ -6,7 +6,7 @@ import { SUPPORTED_CHAINS, CHAIN_MAP } from '@/lib/chains'
 import { isTlosOftRoute, quoteOftSend, executeOftSend, isMstOftRoute, quoteMstSend, executeMstSend, getMstSupportedChains, TLOS_OFT_ADDRESSES, MST_OFT_ADDRESSES, type OftQuoteResult } from '@/lib/oft'
 import { isOftV2Route, getAvailableOftV2Tokens, quoteOftV2Send, executeOftV2Send, OFT_V2_TOKENS, type OftV2QuoteResult } from '@/lib/oft-v2'
 import { AmountInput } from './AmountInput'
-import { ChainSelector } from './ChainSelector'
+import { ChainSelectorModal } from './ChainSelectorModal'
 import { TokenSelector } from './TokenSelector'
 import { LoadingSpinner, SkeletonLoader } from './LoadingSpinner'
 import { QuoteDisplay } from './QuoteDisplay'
@@ -218,7 +218,7 @@ export function BridgeForm() {
 
         {/* Chain selector row */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <ChainSelector
+          <ChainSelectorModal
             label="From"
             selectedChainId={fromChain}
             chains={filteredChains}
@@ -237,7 +237,7 @@ export function BridgeForm() {
             </svg>
           </button>
 
-          <ChainSelector
+          <ChainSelectorModal
             label="To"
             selectedChainId={toChain}
             chains={filteredChains}
