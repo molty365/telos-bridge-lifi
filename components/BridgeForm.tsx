@@ -12,6 +12,7 @@ import { LoadingSpinner, SkeletonLoader } from './LoadingSpinner'
 import { QuoteDisplay } from './QuoteDisplay'
 import { BridgeSettings } from './BridgeSettings'
 import { ErrorDisplay, createError, type ErrorInfo } from './ErrorDisplay'
+import { useAnimation } from './AnimationProvider'
 
 // Token logos for the "You receive" section
 const TOKEN_LOGOS: Record<string, string> = {
@@ -27,6 +28,7 @@ export function BridgeForm() {
   const { address, chainId: walletChainId } = useAccount()
   const { switchChainAsync } = useSwitchChain()
   const { data: walletClient } = useWalletClient()
+  const { reduceMotion } = useAnimation()
   const [fromChain, setFromChain] = useState(40)
   const [toChain, setToChain] = useState(8453)
   const [token, setToken] = useState('TLOS')
@@ -245,9 +247,13 @@ export function BridgeForm() {
   // Fee display now handled in QuoteDisplay component
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className={`space-y-4 sm:space-y-6 ${
+      reduceMotion ? '' : 'animate-in slide-in-from-bottom-4 fade-in duration-700 delay-300'
+    }`}>
       {/* Toolbar icons above the bridge frame */}
-      <div className="flex justify-end gap-3 sm:gap-3 pr-1">
+      <div className={`flex justify-end gap-3 sm:gap-3 pr-1 ${
+        reduceMotion ? '' : 'animate-in slide-in-from-right-3 fade-in duration-500 delay-500'
+      }`}>
         <button className="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-[#1a1a28]/80 border border-gray-800/50 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-all active:scale-95" title="Transaction History">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </button>
@@ -256,8 +262,10 @@ export function BridgeForm() {
         </button>
       </div>
 
-      <div className="bg-gradient-to-br from-gray-800/30 via-gray-700/10 to-gray-800/30 p-[1px] rounded-2xl">
-        <div className="bg-[#12121a]/80 backdrop-blur-xl rounded-2xl p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5 shadow-2xl shadow-black/40">
+      <div className={`bg-gradient-to-br from-gray-800/30 via-gray-700/10 to-gray-800/30 p-[1px] rounded-2xl ${
+        reduceMotion ? '' : 'animate-in slide-in-from-bottom-5 fade-in duration-800 delay-400'
+      }`}>
+        <div className="bg-[#12121a]/80 backdrop-blur-xl rounded-2xl p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5 shadow-2xl shadow-black/40 transition-all duration-300 hover:shadow-3xl hover:shadow-telos-cyan/5">
 
         {/* Chain selector row */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-3">
@@ -400,7 +408,9 @@ export function BridgeForm() {
       </div>
 
       {/* Footer */}
-      <div className="text-center">
+      <div className={`text-center ${
+        reduceMotion ? '' : 'animate-in fade-in slide-in-from-bottom-2 duration-600 delay-700'
+      }`}>
         <span className="inline-flex items-center gap-1.5 text-xs text-telos-cyan/70 bg-telos-cyan/5 border border-telos-cyan/10 rounded-full px-3 py-1.5">
           ⚡ LayerZero + Stargate — cross-chain bridging, excess fees refunded
         </span>
