@@ -216,11 +216,12 @@ export function BridgeForm() {
         </button>
       </div>
 
-      <div className="bg-[#12121a]/80 backdrop-blur-xl border border-gray-800/50 rounded-2xl p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/40">
+      <div className="bg-gradient-to-br from-gray-800/30 via-gray-700/10 to-gray-800/30 p-[1px] rounded-2xl">
+        <div className="bg-[#12121a]/80 backdrop-blur-xl rounded-2xl p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/40">
 
         {/* Chain selector row */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-3 sm:p-4 hover:bg-[#1e1e30] transition-colors">
+          <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-3 sm:p-4 hover:bg-[#1e1e30] hover:border hover:border-gray-600/30 transition-all duration-200">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">From</p>
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
@@ -235,11 +236,11 @@ export function BridgeForm() {
           </div>
 
           <button onClick={swap}
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1a1a28] border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 transition-all text-gray-400 hover:text-telos-cyan shrink-0">
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1a1a28] border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 hover:rotate-180 duration-300 text-gray-400 hover:text-telos-cyan shrink-0">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 2L13 5L10 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 5H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M6 14L3 11L6 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M13 11H3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
 
-          <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-3 sm:p-4 hover:bg-[#1e1e30] transition-colors">
+          <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-3 sm:p-4 hover:bg-[#1e1e30] hover:border hover:border-gray-600/30 transition-all duration-200">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">To</p>
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
@@ -254,13 +255,16 @@ export function BridgeForm() {
           </div>
         </div>
 
+        {/* Subtle separator */}
+        <div className="border-t border-white/[0.03]"></div>
+
         {/* Amount input */}
-        <div className="bg-[#1a1a28] rounded-xl p-5 space-y-3">
+        <div className="bg-[#1a1a28] rounded-xl p-5 space-y-3 focus-within:ring-1 focus-within:ring-telos-cyan/30 transition-all duration-200">
           <div className="flex items-center justify-between">
             <input type="number" inputMode="decimal" placeholder="0.00" value={amount}
               onChange={e => setAmount(e.target.value)}
-              className={`flex-1 bg-transparent text-2xl sm:text-4xl font-light ${insufficientBalance ? 'text-red-400' : 'text-white'} outline-none placeholder-gray-600 min-w-0 tabular-nums`} />
-            <div className="flex items-center gap-2.5 bg-[#252535] border border-gray-700/50 rounded-xl px-4 py-3 ml-4 relative">
+              className={`flex-1 bg-transparent text-2xl sm:text-4xl font-light ${insufficientBalance ? 'text-red-400' : 'text-white'} outline-none placeholder-gray-500 min-w-0 tabular-nums`} />
+            <div className="flex items-center gap-2.5 bg-gradient-to-br from-[#252535] to-[#1e1e2e] border border-gray-700/50 rounded-xl px-4 py-3 ml-4 relative">
               {TOKEN_LOGOS[token] && <img src={TOKEN_LOGOS[token]} alt="" className="w-6 h-6 rounded-full" />}
               {tokenList.length > 1 ? (
                 <>
@@ -277,10 +281,16 @@ export function BridgeForm() {
           </div>
           {address && displayBalance && (
             <div className="flex items-center justify-between text-sm">
-              <span className={insufficientBalance ? 'text-red-400' : 'text-gray-500'}>{parseFloat(displayBalance.formatted).toFixed(4)} {token} available</span>
+              <span className={insufficientBalance ? 'text-red-400' : 'text-gray-500'}>
+                <svg className="inline w-3 h-3 mr-1" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M21 18v1c0 1.1-.9 2-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14c1.1 0 2 .9 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9z"/>
+                  <path d="M12 16h10V8H12v8zm2-4a2 2 0 1 1 4 0 2 2 0 0 1-4 0z"/>
+                </svg>
+                {parseFloat(displayBalance.formatted).toFixed(4)} {token} available
+              </span>
               <div className="flex gap-2">
-                <button onClick={handleHalf} className="text-xs text-gray-500 hover:text-telos-cyan px-2 py-1 rounded-lg bg-white/[0.03] hover:bg-telos-cyan/10 transition-all font-medium">HALF</button>
-                <button onClick={handleMax} className="text-xs text-telos-cyan/60 hover:text-telos-cyan px-2 py-1 rounded-lg bg-telos-cyan/5 hover:bg-telos-cyan/10 transition-all font-medium">MAX</button>
+                <button onClick={handleHalf} className="text-xs text-gray-500 hover:text-telos-cyan px-3 py-1.5 rounded-lg bg-white/[0.03] hover:bg-telos-cyan/10 transition-all duration-200 font-medium border border-transparent hover:border-telos-cyan/20">HALF</button>
+                <button onClick={handleMax} className="text-xs text-telos-cyan/60 hover:text-telos-cyan px-3 py-1.5 rounded-lg bg-telos-cyan/5 hover:bg-telos-cyan/10 transition-all duration-200 font-medium border border-telos-cyan/20 hover:border-telos-cyan/40">MAX</button>
               </div>
             </div>
           )}
@@ -288,7 +298,7 @@ export function BridgeForm() {
 
         {/* You receive */}
         {(hasQuote || quoting) && (
-          <div className="bg-[#1a1a28] rounded-xl p-5">
+          <div className="bg-gradient-to-br from-telos-cyan/[0.02] via-[#1a1a28] to-emerald-500/[0.01] rounded-xl p-5">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">You receive</p>
             <div className="flex items-center justify-between">
               {quoting ? (
@@ -329,7 +339,7 @@ export function BridgeForm() {
 
         {/* Route details */}
         {hasQuote && (
-          <div className="space-y-1.5 text-xs text-gray-500 px-1">
+          <div className="space-y-1.5 text-xs text-gray-500 px-3 py-3 border-t border-white/[0.03]">
             <div className="flex justify-between">
               <span>Via</span>
               <span className="text-telos-cyan font-medium">
@@ -337,7 +347,7 @@ export function BridgeForm() {
               </span>
             </div>
             <div className="flex justify-between"><span>Rate</span><span className="text-gray-300">{OFT_V2_TOKENS[token]?.isStargate ? '~1:1 (Stargate fee applied)' : '1:1 — no slippage'}</span></div>
-            <div className="flex justify-between"><span>Fee</span><span className="text-gray-300">{feeDisplay}</span></div>
+            <div className="flex justify-between"><span>Fee</span><span className="text-gray-300 font-mono">{feeDisplay}</span></div>
             <div className="flex justify-between"><span>Time</span><span className="text-gray-300">~2 min</span></div>
           </div>
         )}
@@ -374,10 +384,12 @@ export function BridgeForm() {
         ) : (
           <button onClick={hasQuote ? handleBridge : doQuote}
             disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || fromChain === toChain || (!isOft && !isMst && !isV2) || insufficientBalance}
-            className="w-full py-5 rounded-xl font-semibold text-lg bg-gradient-to-r from-telos-cyan via-telos-blue to-telos-purple text-white disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 transition-all shadow-lg shadow-telos-cyan/10">
-            {insufficientBalance ? 'Insufficient balance' : quoting ? 'Getting quote...' : bridging ? 'Bridging...' : hasQuote ? `⚡ Bridge ${token}` : 'Get Quote'}
+            className="w-full py-5 rounded-2xl font-semibold text-lg bg-gradient-to-r from-telos-cyan via-telos-blue to-telos-purple text-white disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 hover:shadow-xl hover:shadow-telos-cyan/20 transition-all duration-200 shadow-lg shadow-telos-cyan/10 relative overflow-hidden group">
+            <span className="relative z-10">{insufficientBalance ? 'Insufficient balance' : quoting ? 'Getting quote...' : bridging ? 'Bridging...' : hasQuote ? `⚡ Bridge ${token}` : 'Get Quote'}</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-telos-cyan/20 via-white/10 to-telos-cyan/20 opacity-0 group-hover:opacity-100 group-hover:animate-pulse transition-opacity duration-200"></div>
           </button>
         )}
+        </div>
       </div>
 
       {/* Footer */}
@@ -386,7 +398,6 @@ export function BridgeForm() {
           ⚡ LayerZero + Stargate — cross-chain bridging, excess fees refunded
         </span>
       </div>
-      <p className="text-center text-[10px] text-gray-600">{filteredChains.length} chains · LayerZero OFT</p>
     </div>
   )
 }
