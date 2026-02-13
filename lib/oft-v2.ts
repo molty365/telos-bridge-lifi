@@ -22,6 +22,11 @@ export const LZ_V2_EIDS: Record<number, number> = {
   8217: 30150,  // Kaia
   1088: 30151,  // Metis
   1313161554: 30211, // Aurora
+  100: 30284,   // Gnosis
+  1116: 30153,  // Core
+  167000: 30290, // Taiko
+  169: 30340,   // Manta Pacific
+  30: 30333,    // Rootstock
 }
 
 // OFT V2 token configs on Telos
@@ -57,6 +62,11 @@ export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
       5000: '0xAc290Ad4e0c891FDc295ca4F0a6214cf6dC6acDC',   // Mantle
       1313161554: '0x81F6138153d473E8c5EcebD3DC8Cd4903506B075', // Aurora
       1329: '0x45d417612e177672958dC0537C45a8f8d754Ac2E',   // Sei
+      100: '0x8e8539e4CcD69123c623a106773F2b0cbbc58746',    // Gnosis StargateOFTUSDC
+      1116: '0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590',   // Core StargatePoolUSDC
+      167000: '0x77C71633C34C3784ede189d74223122422492a0f', // Taiko StargateOFTUSDC
+      169: '0x45f1A95A4D3f3836523F5c83673c797f4d4d263B',    // Manta Pacific StargatePoolUSDC
+      30: '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398',     // Rootstock StargateOFTUSDC
     },
   },
   USDT: {
@@ -78,6 +88,10 @@ export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
       2222: '0x41A5b0470D96656Fb3e8f68A218b39AdBca3420b',   // Kava
       1088: '0x4dCBFC0249e8d5032F89D6461218a9D2eFff5125',   // Metis
       1329: '0x0dB9afb4C33be43a0a0e396Fd1383B4ea97aB10a',   // Sei
+      100: '0x77C71633C34C3784ede189d74223122422492a0f',    // Gnosis StargateOFTUSDT
+      1116: '0x45f1A95A4D3f3836523F5c83673c797f4d4d263B',   // Core StargatePoolUSDT
+      167000: '0x1C10CC06DC6D35970d1D53B2A23c76ef370d4135', // Taiko StargateOFTUSDT
+      30: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6',     // Rootstock StargateOFTUSDT
     },
   },
   WBTC: {
@@ -110,6 +124,9 @@ export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
       59144: '0x81F6138153d473E8c5EcebD3DC8Cd4903506B075', // Linea StargatePoolNative
       5000: '0x4c1d3Fc3fC3c177c3b633427c2F769276c547463',   // Mantle StargatePoolETH
       534352: '0xC2b638Cb5042c1B3c5d5C969361fB50569840583', // Scroll StargatePoolNative
+      100: '0x9c2dc7377717603eB92b2655c5f2E7997a4945BD',    // Gnosis StargateOFTETH
+      169: '0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590',    // Manta Pacific StargatePoolNative
+      30: '0x45f1A95A4D3f3836523F5c83673c797f4d4d263B',     // Rootstock StargateOFTETH
     },
   },
 }
