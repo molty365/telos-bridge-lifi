@@ -52,6 +52,9 @@ export function BridgeForm() {
   const chainName = (id: number) => CHAIN_MAP.get(id)?.name || `Chain ${id}`
   const chainIcon = (id: number) => CHAIN_MAP.get(id)?.icon
 
+  // Check for insufficient balance
+  const insufficientBalance = !!(address && displayBalance && amount && parseFloat(amount) > parseFloat(displayBalance.formatted))
+
   // Get chains that support the selected token
   const getChainsForToken = useCallback((tok: string) => {
     const chainIds = new Set<number>()
@@ -203,22 +206,26 @@ export function BridgeForm() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-[#12121a]/80 backdrop-blur-xl border border-gray-800/50 rounded-2xl p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/40">
+      {/* Toolbar icons above the bridge frame */}
+      <div className="flex justify-end gap-3 pr-1">
+        <button className="w-9 h-9 rounded-full bg-[#1a1a28]/80 border border-gray-800/50 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-all" title="Transaction History">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </button>
+        <button onClick={() => setShowSettings(!showSettings)} className="w-9 h-9 rounded-full bg-[#1a1a28]/80 border border-gray-800/50 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-all" title="Settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
 
-        {/* Settings toggle */}
-        <div className="flex justify-end">
-          <button onClick={() => setShowSettings(!showSettings)}
-            className="text-gray-500 hover:text-gray-300 transition-colors text-lg">⚙️</button>
-        </div>
+      <div className="bg-[#12121a]/80 backdrop-blur-xl border border-gray-800/50 rounded-2xl p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/40">
 
         {/* Chain selector row */}
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-3 sm:p-4 hover:bg-[#1e1e30] transition-colors">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">From</p>
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0"
-                style={{ background: `${CHAIN_COLORS[fromChain] || '#666'}20` }}>
-                {chainIcon(fromChain) && <img src={chainIcon(fromChain)} alt="" className="w-6 h-6 sm:w-7 sm:h-7 rounded-full" />}
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
+                style={{ background: `${CHAIN_COLORS[fromChain] || '#666'}30` }}>
+                {chainIcon(fromChain) && <img src={chainIcon(fromChain)} alt="" className="w-5 h-5 sm:w-6 sm:h-6" />}
               </div>
               <select value={fromChain} onChange={e => handleFromChain(Number(e.target.value))}
                 className="bg-transparent text-white font-semibold text-sm sm:text-base outline-none cursor-pointer flex-1 min-w-0 truncate">
@@ -235,9 +242,9 @@ export function BridgeForm() {
           <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-3 sm:p-4 hover:bg-[#1e1e30] transition-colors">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">To</p>
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0"
-                style={{ background: `${CHAIN_COLORS[toChain] || '#666'}20` }}>
-                {chainIcon(toChain) && <img src={chainIcon(toChain)} alt="" className="w-6 h-6 sm:w-7 sm:h-7 rounded-full" />}
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
+                style={{ background: `${CHAIN_COLORS[toChain] || '#666'}30` }}>
+                {chainIcon(toChain) && <img src={chainIcon(toChain)} alt="" className="w-5 h-5 sm:w-6 sm:h-6" />}
               </div>
               <select value={toChain} onChange={e => handleToChain(Number(e.target.value))}
                 className="bg-transparent text-white font-semibold text-sm sm:text-base outline-none cursor-pointer flex-1 min-w-0 truncate">
@@ -252,7 +259,7 @@ export function BridgeForm() {
           <div className="flex items-center justify-between">
             <input type="number" inputMode="decimal" placeholder="0.00" value={amount}
               onChange={e => setAmount(e.target.value)}
-              className="flex-1 bg-transparent text-2xl sm:text-4xl font-light text-white outline-none placeholder-gray-600 min-w-0 tabular-nums" />
+              className={`flex-1 bg-transparent text-2xl sm:text-4xl font-light ${insufficientBalance ? 'text-red-400' : 'text-white'} outline-none placeholder-gray-600 min-w-0 tabular-nums`} />
             <div className="flex items-center gap-2.5 bg-[#252535] border border-gray-700/50 rounded-xl px-4 py-3 ml-4 relative">
               {TOKEN_LOGOS[token] && <img src={TOKEN_LOGOS[token]} alt="" className="w-6 h-6 rounded-full" />}
               {tokenList.length > 1 ? (
@@ -269,8 +276,8 @@ export function BridgeForm() {
             </div>
           </div>
           {address && displayBalance && (
-            <div className="flex items-center justify-between text-sm text-gray-500">
-              <span>{parseFloat(displayBalance.formatted).toFixed(4)} {token} available</span>
+            <div className="flex items-center justify-between text-sm">
+              <span className={insufficientBalance ? 'text-red-400' : 'text-gray-500'}>{parseFloat(displayBalance.formatted).toFixed(4)} {token} available</span>
               <div className="flex gap-2">
                 <button onClick={handleHalf} className="text-xs text-gray-500 hover:text-telos-cyan px-2 py-1 rounded-lg bg-white/[0.03] hover:bg-telos-cyan/10 transition-all font-medium">HALF</button>
                 <button onClick={handleMax} className="text-xs text-telos-cyan/60 hover:text-telos-cyan px-2 py-1 rounded-lg bg-telos-cyan/5 hover:bg-telos-cyan/10 transition-all font-medium">MAX</button>
@@ -366,9 +373,9 @@ export function BridgeForm() {
           </div>
         ) : (
           <button onClick={hasQuote ? handleBridge : doQuote}
-            disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || fromChain === toChain || (!isOft && !isMst && !isV2)}
+            disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || fromChain === toChain || (!isOft && !isMst && !isV2) || insufficientBalance}
             className="w-full py-5 rounded-xl font-semibold text-lg bg-gradient-to-r from-telos-cyan via-telos-blue to-telos-purple text-white disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 transition-all shadow-lg shadow-telos-cyan/10">
-            {quoting ? 'Getting quote...' : bridging ? 'Bridging...' : hasQuote ? `⚡ Bridge ${token}` : 'Get Quote'}
+            {insufficientBalance ? 'Insufficient balance' : quoting ? 'Getting quote...' : bridging ? 'Bridging...' : hasQuote ? `⚡ Bridge ${token}` : 'Get Quote'}
           </button>
         )}
       </div>
