@@ -13,6 +13,7 @@ import { QuoteDisplay } from './QuoteDisplay'
 import { BridgeSettings } from './BridgeSettings'
 import { ErrorDisplay, createError, type ErrorInfo } from './ErrorDisplay'
 import { TransactionStepper, type TransactionStep } from './TransactionStepper'
+import { RecentTransactions, addTransaction, updateTransaction, type BridgeTransaction } from './RecentTransactions'
 import { useAnimation } from './AnimationProvider'
 
 // Token logos for the "You receive" section
@@ -45,6 +46,8 @@ export function BridgeForm() {
   const [bridgeStatus, setBridgeStatus] = useState<string | null>(null)
   const [transactionStep, setTransactionStep] = useState<TransactionStep>('idle')
   const [transactionHash, setTransactionHash] = useState<string | undefined>()
+  const [currentTransactionId, setCurrentTransactionId] = useState<string | undefined>()
+  const [showRecentTransactions, setShowRecentTransactions] = useState(false)
   const publicClient = usePublicClient({ chainId: fromChain })
   const quoteTimeout = useRef<NodeJS.Timeout | null>(null)
 
@@ -117,7 +120,7 @@ export function BridgeForm() {
 
   const clearQuotes = () => { 
     setOftQuote(null); setV2Quote(null); setError(null); setBridgeStatus(null);
-    setTransactionStep('idle'); setTransactionHash(undefined);
+    setTransactionStep('idle'); setTransactionHash(undefined); setCurrentTransactionId(undefined);
   }
 
   const doQuote = useCallback(async () => {
@@ -174,12 +177,26 @@ export function BridgeForm() {
     setBridging(true); setError(null); setBridgeStatus('Preparing…')
     setTransactionStep('submitted')
 
+    // Create transaction record in localStorage
+    const transaction = addTransaction({
+      fromChain,
+      toChain,
+      token,
+      amount,
+      status: 'pending',
+    })
+    setCurrentTransactionId(transaction.id)
+
     // Enhanced status callback that updates both status and stepper
     const updateProgress = (status: string, hash?: string) => {
       setBridgeStatus(status)
       
       if (hash && !transactionHash) {
         setTransactionHash(hash)
+        // Update transaction with hash
+        if (transaction.id) {
+          updateTransaction(transaction.id, { txHash: hash })
+        }
       }
       
       // Update stepper based on status keywords
@@ -189,6 +206,10 @@ export function BridgeForm() {
         setTransactionStep('bridging')
       } else if (status.toLowerCase().includes('complete') || status.toLowerCase().includes('✅')) {
         setTransactionStep('completed')
+        // Mark transaction as completed
+        if (transaction.id) {
+          updateTransaction(transaction.id, { status: 'completed' })
+        }
       }
     }
 
@@ -225,6 +246,10 @@ export function BridgeForm() {
       }
       setBridgeStatus(null)
       setTransactionStep('idle')
+      // Mark transaction as failed
+      if (transaction.id) {
+        updateTransaction(transaction.id, { status: 'failed' })
+      }
     } finally { setBridging(false) }
   }, [oftQuote, v2Quote, address, walletClient, publicClient, walletChainId, fromChain, toChain, switchChainAsync, amount, slippage, displayBalance, token, isMst])
 
@@ -282,7 +307,11 @@ export function BridgeForm() {
       <div className={`flex justify-end gap-3 sm:gap-3 pr-1 ${
         reduceMotion ? '' : 'animate-in slide-in-from-right-3 fade-in duration-500 delay-500'
       }`}>
-        <button className="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-[#1a1a28]/80 border border-gray-800/50 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-all active:scale-95" title="Transaction History">
+        <button 
+          onClick={() => setShowRecentTransactions(true)}
+          className="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-[#1a1a28]/80 border border-gray-800/50 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-all active:scale-95" 
+          title="Transaction History"
+        >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </button>
         <button onClick={() => setShowSettings(!showSettings)} className="w-11 h-11 sm:w-9 sm:h-9 rounded-full bg-[#1a1a28]/80 border border-gray-800/50 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-all active:scale-95" title="Settings">
@@ -452,6 +481,12 @@ export function BridgeForm() {
           ⚡ LayerZero + Stargate — cross-chain bridging, excess fees refunded
         </span>
       </div>
+
+      {/* Recent Transactions Modal */}
+      <RecentTransactions
+        isOpen={showRecentTransactions}
+        onClose={() => setShowRecentTransactions(false)}
+      />
     </div>
   )
 }

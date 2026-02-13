@@ -3,9 +3,9 @@
 > Update it after every cycle with what you did and what's next.
 
 ## Current Status
-- **Cycle:** 7 completed, working on cycle 8
+- **Cycle:** 8 completed, working on cycle 9
 - **Branch:** `design-sprint`
-- **Last commit:** `8c2d4fc` — cycle-7: enhanced animations and transitions
+- **Last commit:** `4511d6b` — cycle-8: transaction progress stepper with visual feedback
 
 ## What's Been Done
 
@@ -79,6 +79,17 @@
 - Added accessibility support with `prefers-reduced-motion` detection
 - Enhanced BridgeForm with subtle animation delays and effects
 - Improved overall visual polish with smooth, natural feeling transitions
+
+### Cycle 8 ✅
+- New `TransactionStepper.tsx` component with 4-stage progress visualization
+- Visual progress flow: submitted → confirming → bridging → completed
+- Animated progress bar with smooth transitions and pulsing current step indicators
+- Block explorer integration with clickable transaction hash links
+- Enhanced BridgeForm with step-based status updates and transaction tracking
+- Success celebration display with confetti-style completion message
+- Responsive design optimized for mobile and desktop viewing
+- Real-time progress updates that respond to bridge execution status
+- Accessibility features including reduced motion support
 
 ## Competitive Insights (carry forward)
 Study these bridges for inspiration:
