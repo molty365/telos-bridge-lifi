@@ -271,9 +271,14 @@ function addressToBytes32(addr: Address): Hex {
 export function isOftV2Route(token: string, fromChain: number, toChain: number): boolean {
   const config = OFT_V2_TOKENS[token]
   if (!config) return false
-  // Bridging FROM Telos: destination must be a peer
+  // Stargate tokens: any chain with a pool can send to any other chain with a pool
+  if (config.isStargate) {
+    const fromHasPool = fromChain === 40 || !!config.peers[fromChain]
+    const toHasPool = toChain === 40 || !!config.peers[toChain]
+    return fromHasPool && toHasPool && !!LZ_V2_EIDS[fromChain] && !!LZ_V2_EIDS[toChain]
+  }
+  // Non-Stargate OFTs (WBTC): still require Telos on one side
   if (fromChain === 40) return !!config.peers[toChain] && !!LZ_V2_EIDS[toChain]
-  // Bridging TO Telos: source must be a peer
   if (toChain === 40) return !!config.peers[fromChain] && !!LZ_V2_EIDS[fromChain]
   return false
 }
