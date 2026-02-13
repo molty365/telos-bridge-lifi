@@ -12,6 +12,7 @@ import { LoadingSpinner, SkeletonLoader } from './LoadingSpinner'
 import { QuoteDisplay } from './QuoteDisplay'
 import { BridgeSettings } from './BridgeSettings'
 import { ErrorDisplay, createError, type ErrorInfo } from './ErrorDisplay'
+import { TransactionStepper, type TransactionStep } from './TransactionStepper'
 import { useAnimation } from './AnimationProvider'
 
 // Token logos for the "You receive" section
@@ -42,6 +43,8 @@ export function BridgeForm() {
   const [error, setError] = useState<ErrorInfo | null>(null)
   const [bridging, setBridging] = useState(false)
   const [bridgeStatus, setBridgeStatus] = useState<string | null>(null)
+  const [transactionStep, setTransactionStep] = useState<TransactionStep>('idle')
+  const [transactionHash, setTransactionHash] = useState<string | undefined>()
   const publicClient = usePublicClient({ chainId: fromChain })
   const quoteTimeout = useRef<NodeJS.Timeout | null>(null)
 
@@ -112,7 +115,10 @@ export function BridgeForm() {
     }
   }, [token, filteredChains])
 
-  const clearQuotes = () => { setOftQuote(null); setV2Quote(null); setError(null); setBridgeStatus(null) }
+  const clearQuotes = () => { 
+    setOftQuote(null); setV2Quote(null); setError(null); setBridgeStatus(null);
+    setTransactionStep('idle'); setTransactionHash(undefined);
+  }
 
   const doQuote = useCallback(async () => {
     if (!amount || parseFloat(amount) <= 0 || !publicClient) return
@@ -166,6 +172,26 @@ export function BridgeForm() {
       return
     }
     setBridging(true); setError(null); setBridgeStatus('Preparing…')
+    setTransactionStep('submitted')
+
+    // Enhanced status callback that updates both status and stepper
+    const updateProgress = (status: string, hash?: string) => {
+      setBridgeStatus(status)
+      
+      if (hash && !transactionHash) {
+        setTransactionHash(hash)
+      }
+      
+      // Update stepper based on status keywords
+      if (status.toLowerCase().includes('confirm')) {
+        setTransactionStep('confirming')
+      } else if (status.toLowerCase().includes('bridg') || status.toLowerCase().includes('relay')) {
+        setTransactionStep('bridging')
+      } else if (status.toLowerCase().includes('complete') || status.toLowerCase().includes('✅')) {
+        setTransactionStep('completed')
+      }
+    }
+
     try {
       if (walletChainId !== fromChain) {
         setBridgeStatus('Switching network…')
@@ -173,18 +199,19 @@ export function BridgeForm() {
       }
       if (oftQuote && isMst) {
         await executeMstSend(walletClient, publicClient, fromChain, toChain, amount,
-          address, address, (s: string) => setBridgeStatus(s))
+          address, address, updateProgress)
         setOftQuote(null)
       } else if (oftQuote) {
         await executeOftSend(walletClient, publicClient, fromChain, toChain, amount,
-          address, address, slippage, (s: string) => setBridgeStatus(s))
+          address, address, slippage, updateProgress)
         setOftQuote(null)
       } else if (v2Quote) {
         await executeOftV2Send(walletClient, publicClient, token, fromChain, toChain, amount,
-          address, address, (s: string) => setBridgeStatus(s))
+          address, address, updateProgress)
         setV2Quote(null)
       }
       setBridgeStatus('✅ Bridge complete! Funds arriving shortly.')
+      setTransactionStep('completed')
       setAmount('')
     } catch (e: any) {
       const msg = e.message || 'Bridge failed'
@@ -197,6 +224,7 @@ export function BridgeForm() {
         setError(createError('bridge_failed', 'Bridge transaction failed', msg))
       }
       setBridgeStatus(null)
+      setTransactionStep('idle')
     } finally { setBridging(false) }
   }, [oftQuote, v2Quote, address, walletClient, publicClient, walletChainId, fromChain, toChain, switchChainAsync, amount, slippage, displayBalance, token, isMst])
 
@@ -338,6 +366,15 @@ export function BridgeForm() {
             estimatedTime="~2 min"
           />
         )}
+
+        {/* Transaction Progress Stepper */}
+        <TransactionStepper
+          currentStep={transactionStep}
+          txHash={transactionHash}
+          fromChainId={fromChain}
+          toChainId={toChain}
+          estimatedTime="~2 min"
+        />
 
         {/* Enhanced settings panel */}
         {showSettings && (
