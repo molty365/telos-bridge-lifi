@@ -9,6 +9,8 @@ import { AmountInput } from './AmountInput'
 import { ChainSelector } from './ChainSelector'
 import { TokenSelector } from './TokenSelector'
 import { LoadingSpinner, SkeletonLoader } from './LoadingSpinner'
+import { QuoteDisplay } from './QuoteDisplay'
+import { BridgeSettings } from './BridgeSettings'
 
 // Token logos for the "You receive" section
 const TOKEN_LOGOS: Record<string, string> = {
@@ -197,12 +199,7 @@ export function BridgeForm() {
     setToChain(id); clearQuotes()
   }
 
-  const feeCurrency = CHAIN_MAP.get(fromChain)?.nativeCurrency || 'TLOS'
-  const feeDisplay = oftQuote
-    ? `~${parseFloat(oftQuote.nativeFeeFormatted).toFixed(0)} ${feeCurrency}${oftQuote.feeEstimated ? ' (est · excess refunded)' : ''}`
-    : v2Quote
-    ? `~${parseFloat(v2Quote.nativeFeeFormatted).toFixed(4)} ${feeCurrency}${v2Quote.feeEstimated ? ' (est · excess refunded)' : ''}`
-    : ''
+  // Fee display now handled in QuoteDisplay component
 
   return (
     <div className="space-y-4">
@@ -271,64 +268,42 @@ export function BridgeForm() {
           />
         </div>
 
-        {/* You receive */}
+        {/* Quote display */}
         {(hasQuote || quoting) && (
-          <div className="bg-gradient-to-br from-telos-cyan/[0.02] via-[#1a1a28] to-emerald-500/[0.01] rounded-xl p-5 border border-telos-cyan/10">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-              You receive
-              {quoting && <LoadingSpinner size="sm" />}
-            </p>
-            <div className="flex items-center justify-between">
-              {quoting ? (
-                <SkeletonLoader className="h-8 w-32" />
-              ) : (
-                <span className="text-xl sm:text-3xl font-light text-telos-cyan tabular-nums">
-                  {v2Quote ? v2Quote.amountReceivedFormatted : amount}
-                </span>
-              )}
-              <div className="flex items-center gap-2 text-xs sm:text-base text-gray-400 font-medium">
-                {TOKEN_LOGOS[token] && <img src={TOKEN_LOGOS[token]} alt="" className="w-5 h-5 rounded-full" />}
-                {token} on {chainName(toChain)}
-              </div>
-            </div>
-          </div>
+          <QuoteDisplay
+            quoting={quoting}
+            amount={amount}
+            token={token}
+            toChainName={chainName(toChain)}
+            amountReceived={v2Quote ? v2Quote.amountReceivedFormatted : amount}
+            isStargate={OFT_V2_TOKENS[token]?.isStargate}
+            nativeFee={oftQuote 
+              ? `~${parseFloat(oftQuote.nativeFeeFormatted).toFixed(0)}` 
+              : v2Quote 
+                ? `~${parseFloat(v2Quote.nativeFeeFormatted).toFixed(4)}`
+                : undefined
+            }
+            feeCurrency={CHAIN_MAP.get(fromChain)?.nativeCurrency || 'TLOS'}
+            estimatedTime="~2 min"
+          />
         )}
 
-        {/* Slippage */}
+        {/* Enhanced settings panel */}
         {showSettings && (
-          <div className="bg-[#0e0e18] rounded-xl p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider">Slippage</p>
-              <span className="text-[10px] text-telos-cyan">{slippage}%</span>
-            </div>
-            <div className="flex gap-2">
-              {[0.5, 1, 2, 3].map(s => (
-                <button key={s} onClick={() => setSlippage(s)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    slippage === s
-                      ? 'bg-telos-cyan/15 text-telos-cyan border border-telos-cyan/30'
-                      : 'text-gray-500 border border-transparent hover:text-gray-300'}`}>
-                  {s}%
-                </button>
-              ))}
-            </div>
-          </div>
+          <BridgeSettings
+            slippage={slippage}
+            onSlippageChange={setSlippage}
+            estimatedGas={oftQuote 
+              ? `${oftQuote.nativeFeeFormatted} ${CHAIN_MAP.get(fromChain)?.nativeCurrency || 'TLOS'}` 
+              : v2Quote 
+                ? `${v2Quote.nativeFeeFormatted} ${CHAIN_MAP.get(fromChain)?.nativeCurrency || 'TLOS'}`
+                : undefined
+            }
+            showGasOptimization={fromChain === 1 || fromChain === 137} // Only show on high-gas chains
+          />
         )}
 
-        {/* Route details */}
-        {hasQuote && (
-          <div className="space-y-1.5 text-xs text-gray-500 px-3 py-3 border-t border-white/[0.03]">
-            <div className="flex justify-between">
-              <span>Via</span>
-              <span className="text-telos-cyan font-medium">
-                ⚡ {(isOft || isMst) ? 'LayerZero OFT V1' : OFT_V2_TOKENS[token]?.isStargate ? 'Stargate (LayerZero V2)' : 'LayerZero OFT V2'}
-              </span>
-            </div>
-            <div className="flex justify-between"><span>Rate</span><span className="text-gray-300">{OFT_V2_TOKENS[token]?.isStargate ? '~1:1 (Stargate fee applied)' : '1:1 — no slippage'}</span></div>
-            <div className="flex justify-between"><span>Fee</span><span className="text-gray-300 font-mono">{feeDisplay}</span></div>
-            <div className="flex justify-between"><span>Time</span><span className="text-gray-300">~2 min</span></div>
-          </div>
-        )}
+        {/* Route details now included in QuoteDisplay component */}
 
         {/* Error */}
         {error && (
