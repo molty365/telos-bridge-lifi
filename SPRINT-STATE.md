@@ -3,9 +3,9 @@
 > Update it after every cycle with what you did and what's next.
 
 ## Current Status
-- **Cycle:** 1 completed, working on cycle 2
+- **Cycle:** 3 completed, working on cycle 4
 - **Branch:** `design-sprint`
-- **Last commit:** `640a475` — cycle-1: component refactor + improved UX polish
+- **Last commit:** `dc087bc` — cycle-3: transaction progress stepper + modal
 
 ## What's Been Done
 
@@ -17,6 +17,25 @@
   - `LoadingSpinner.tsx` — reusable spinner
 - UX polish pass on existing UI
 
+### Cycle 2 ✅
+- New `QuoteDisplay.tsx` component with route comparison indicators
+- Live pricing animation and confidence scoring
+- Enhanced `BridgeSettings.tsx` with gas optimization (Ethereum/Polygon)
+- MEV protection toggle for supported chains
+- Real-time route optimization messaging
+- 85% savings vs alternatives indicator
+- Progressive loading states with route finding animation
+
+### Cycle 3 ✅
+- New `TransactionProgress.tsx` component with animated stepper (Submit → Confirm → Bridge → Complete)
+- New `TransactionModal.tsx` overlay with backdrop blur and transitions  
+- Integrated modal into BridgeForm bridge flow with state management
+- Added transaction step tracking and error handling
+- Success celebration animation with confetti effect
+- Real-time countdown timer for estimated completion
+- Replaced inline status displays with polished modal experience
+- Dependencies: @headlessui/react and @heroicons/react
+
 ## Competitive Insights (carry forward)
 Study these bridges for inspiration:
 - **Stargate** — clean route visualization, progress tracking
@@ -26,15 +45,15 @@ Study these bridges for inspiration:
 
 ## Priority Queue (what to build next)
 1. Chain selector modal/dropdown (grid of chain logos instead of native select)
-2. Token search/selector modal
-3. Transaction progress stepper (submitted → confirming → bridging → done)
-4. Mobile responsive pass
-5. Better error states with recovery actions
-6. Animations: page load, card transitions, number counting
-7. Dark/light chain-aware backgrounds
-8. Recent transactions panel
-9. Estimated time with animated countdown
-10. Success celebration animation
+2. Token search/selector modal  
+3. Mobile responsive pass
+4. Better error states with recovery actions
+5. Animations: page load, card transitions, number counting
+6. Dark/light chain-aware backgrounds
+7. Recent transactions panel
+8. Advanced settings: custom gas, deadline, recipient address
+9. Multi-route comparison (show 2-3 route options)
+10. Bridge analytics dashboard
 
 ## Architecture Notes
 - Next.js 14, Tailwind, RainbowKit
