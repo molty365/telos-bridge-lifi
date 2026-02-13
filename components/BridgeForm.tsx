@@ -5,12 +5,12 @@ import { useAccount, useBalance, useSwitchChain, useWalletClient, usePublicClien
 import { SUPPORTED_CHAINS, CHAIN_MAP } from '@/lib/chains'
 import { isTlosOftRoute, quoteOftSend, executeOftSend, isMstOftRoute, quoteMstSend, executeMstSend, getMstSupportedChains, TLOS_OFT_ADDRESSES, MST_OFT_ADDRESSES, type OftQuoteResult } from '@/lib/oft'
 import { isOftV2Route, getAvailableOftV2Tokens, quoteOftV2Send, executeOftV2Send, OFT_V2_TOKENS, type OftV2QuoteResult } from '@/lib/oft-v2'
+import { AmountInput } from './AmountInput'
+import { ChainSelector } from './ChainSelector'
+import { TokenSelector } from './TokenSelector'
+import { LoadingSpinner, SkeletonLoader } from './LoadingSpinner'
 
-const CHAIN_COLORS: Record<number, string> = {
-  1: '#627EEA', 40: '#00F2FE', 8453: '#0052FF', 56: '#F0B90B',
-  42161: '#28A0F0', 137: '#8247E5', 43114: '#E84142', 10: '#FF0420',
-}
-
+// Token logos for the "You receive" section
 const TOKEN_LOGOS: Record<string, string> = {
   TLOS: '/telos-bridge-lifi/tokens/TLOS.svg',
   USDC: '/telos-bridge-lifi/tokens/USDC.png',
@@ -221,88 +221,66 @@ export function BridgeForm() {
 
         {/* Chain selector row */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-3 sm:p-4 hover:bg-[#1e1e30] hover:border hover:border-gray-600/30 transition-all duration-200">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">From</p>
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
-                style={{ background: `${CHAIN_COLORS[fromChain] || '#666'}30` }}>
-                {chainIcon(fromChain) && <img src={chainIcon(fromChain)} alt="" className="w-5 h-5 sm:w-6 sm:h-6" />}
-              </div>
-              <select value={fromChain} onChange={e => handleFromChain(Number(e.target.value))}
-                className="bg-transparent text-white font-semibold text-sm sm:text-base outline-none cursor-pointer flex-1 min-w-0 truncate">
-                {filteredChains.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-          </div>
+          <ChainSelector
+            label="From"
+            selectedChainId={fromChain}
+            chains={filteredChains}
+            onChainChange={handleFromChain}
+          />
 
-          <button onClick={swap}
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1a1a28] border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 hover:rotate-180 duration-300 text-gray-400 hover:text-telos-cyan shrink-0">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 2L13 5L10 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 5H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M6 14L3 11L6 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M13 11H3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <button 
+            onClick={swap}
+            className="w-10 h-10 rounded-full bg-[#1a1a28] border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 hover:rotate-180 duration-300 text-gray-400 hover:text-telos-cyan shrink-0 group"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="group-hover:scale-110 transition-transform">
+              <path d="M10 2L13 5L10 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M3 5H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M6 14L3 11L6 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M13 11H3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
           </button>
 
-          <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-3 sm:p-4 hover:bg-[#1e1e30] hover:border hover:border-gray-600/30 transition-all duration-200">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">To</p>
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
-                style={{ background: `${CHAIN_COLORS[toChain] || '#666'}30` }}>
-                {chainIcon(toChain) && <img src={chainIcon(toChain)} alt="" className="w-5 h-5 sm:w-6 sm:h-6" />}
-              </div>
-              <select value={toChain} onChange={e => handleToChain(Number(e.target.value))}
-                className="bg-transparent text-white font-semibold text-sm sm:text-base outline-none cursor-pointer flex-1 min-w-0 truncate">
-                {filteredChains.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-          </div>
+          <ChainSelector
+            label="To"
+            selectedChainId={toChain}
+            chains={filteredChains}
+            onChainChange={handleToChain}
+          />
         </div>
 
         {/* Subtle separator */}
         <div className="border-t border-white/[0.03]"></div>
 
         {/* Amount input */}
-        <div className="bg-[#1a1a28] rounded-xl p-5 space-y-3 focus-within:ring-1 focus-within:ring-telos-cyan/30 transition-all duration-200">
-          <div className="flex items-center justify-between">
-            <input type="number" inputMode="decimal" placeholder="0.00" value={amount}
-              onChange={e => setAmount(e.target.value)}
-              className={`flex-1 bg-transparent text-2xl sm:text-4xl font-light ${insufficientBalance ? 'text-red-400' : 'text-white'} outline-none placeholder-gray-500 min-w-0 tabular-nums`} />
-            <div className="flex items-center gap-2.5 bg-gradient-to-br from-[#252535] to-[#1e1e2e] border border-gray-700/50 rounded-xl px-4 py-3 ml-4 relative">
-              {TOKEN_LOGOS[token] && <img src={TOKEN_LOGOS[token]} alt="" className="w-6 h-6 rounded-full" />}
-              {tokenList.length > 1 ? (
-                <>
-                  <select value={token} onChange={e => { setToken(e.target.value); clearQuotes() }}
-                    className="bg-transparent text-base font-semibold outline-none cursor-pointer text-white appearance-none pr-5">
-                    {tokenList.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                  <svg className="w-3.5 h-3.5 text-gray-500 absolute right-3" viewBox="0 0 12 12" fill="none"><path d="M3 5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                </>
-              ) : (
-                <span className="text-base font-semibold text-white">{token}</span>
-              )}
-            </div>
-          </div>
-          {address && displayBalance && (
-            <div className="flex items-center justify-between text-sm">
-              <span className={insufficientBalance ? 'text-red-400' : 'text-gray-500'}>
-                <svg className="inline w-3 h-3 mr-1" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M21 18v1c0 1.1-.9 2-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14c1.1 0 2 .9 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9z"/>
-                  <path d="M12 16h10V8H12v8zm2-4a2 2 0 1 1 4 0 2 2 0 0 1-4 0z"/>
-                </svg>
-                {parseFloat(displayBalance.formatted).toFixed(4)} {token} available
-              </span>
-              <div className="flex gap-2">
-                <button onClick={handleHalf} className="text-xs text-gray-500 hover:text-telos-cyan px-3 py-1.5 rounded-lg bg-white/[0.03] hover:bg-telos-cyan/10 transition-all duration-200 font-medium border border-transparent hover:border-telos-cyan/20">HALF</button>
-                <button onClick={handleMax} className="text-xs text-telos-cyan/60 hover:text-telos-cyan px-3 py-1.5 rounded-lg bg-telos-cyan/5 hover:bg-telos-cyan/10 transition-all duration-200 font-medium border border-telos-cyan/20 hover:border-telos-cyan/40">MAX</button>
-              </div>
-            </div>
-          )}
+        <div className="flex items-center gap-4">
+          <AmountInput
+            amount={amount}
+            onAmountChange={setAmount}
+            token={token}
+            balance={displayBalance}
+            insufficientBalance={insufficientBalance}
+            onMax={handleMax}
+            onHalf={handleHalf}
+            onQuarter={() => { if (displayBalance) setAmount((parseFloat(displayBalance.formatted) / 4).toString()) }}
+          />
+          
+          <TokenSelector 
+            selectedToken={token}
+            tokens={tokenList}
+            onTokenChange={(newToken) => { setToken(newToken); clearQuotes() }}
+          />
         </div>
 
         {/* You receive */}
         {(hasQuote || quoting) && (
-          <div className="bg-gradient-to-br from-telos-cyan/[0.02] via-[#1a1a28] to-emerald-500/[0.01] rounded-xl p-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">You receive</p>
+          <div className="bg-gradient-to-br from-telos-cyan/[0.02] via-[#1a1a28] to-emerald-500/[0.01] rounded-xl p-5 border border-telos-cyan/10">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+              You receive
+              {quoting && <LoadingSpinner size="sm" />}
+            </p>
             <div className="flex items-center justify-between">
               {quoting ? (
-                <div className="skeleton h-10 w-40" />
+                <SkeletonLoader className="h-8 w-32" />
               ) : (
                 <span className="text-xl sm:text-3xl font-light text-telos-cyan tabular-nums">
                   {v2Quote ? v2Quote.amountReceivedFormatted : amount}
@@ -385,7 +363,13 @@ export function BridgeForm() {
           <button onClick={hasQuote ? handleBridge : doQuote}
             disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || fromChain === toChain || (!isOft && !isMst && !isV2) || insufficientBalance}
             className="w-full py-5 rounded-2xl font-semibold text-lg bg-gradient-to-r from-telos-cyan via-telos-blue to-telos-purple text-white disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 hover:shadow-xl hover:shadow-telos-cyan/20 transition-all duration-200 shadow-lg shadow-telos-cyan/10 relative overflow-hidden group">
-            <span className="relative z-10">{insufficientBalance ? 'Insufficient balance' : quoting ? 'Getting quote...' : bridging ? 'Bridging...' : hasQuote ? `⚡ Bridge ${token}` : 'Get Quote'}</span>
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              {(quoting || bridging) && <LoadingSpinner size="sm" className="text-white" />}
+              {insufficientBalance ? 'Insufficient balance' : 
+               quoting ? 'Getting quote...' : 
+               bridging ? 'Bridging...' : 
+               hasQuote ? `⚡ Bridge ${token}` : 'Get Quote'}
+            </span>
             <div className="absolute inset-0 bg-gradient-to-r from-telos-cyan/20 via-white/10 to-telos-cyan/20 opacity-0 group-hover:opacity-100 group-hover:animate-pulse transition-opacity duration-200"></div>
           </button>
         )}
