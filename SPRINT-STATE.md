@@ -5,7 +5,7 @@
 ## Current Status
 - **Cycle:** 4 completed, working on cycle 5
 - **Branch:** `design-sprint`
-- **Last commit:** `76025fe` — cycle-4: enhanced token selector modal
+- **Last commit:** `fbd24d8` — cycle-4: comprehensive mobile responsive improvements
 
 ## What's Been Done
 
@@ -37,14 +37,15 @@
 - Maintained backward compatibility with existing chain/token data
 
 ### Cycle 4 ✅
-- Enhanced `TokenSelectorModal.tsx` with advanced categorization
-- Added token categories: Native, Stablecoin, Wrapped, Gaming  
-- Rich token information with descriptions and brand colors
-- Advanced search functionality (symbol, name, description)
-- Consistent modal design pattern with ChainSelector
-- Graceful single-token fallback for routes with one option
-- Seamless integration into BridgeForm workflow
-- Bundle optimization maintained: 310kB (under 350kB target)
+- Comprehensive mobile responsive improvements across all components
+- Mobile-first modal design: bottom sheet style on mobile, centered on desktop
+- Enhanced touch targets with active:scale animations for better tactile feedback
+- Improved mobile layout: stack elements vertically on small screens
+- Better mobile spacing and padding throughout the interface
+- Touch-friendly button sizes with optimized tap targets
+- Mobile-optimized CSS with touch-action and webkit improvements
+- Reduced visual noise on mobile for better performance
+- Bottom sheet modals for chain/token selection on mobile devices
 
 ## Competitive Insights (carry forward)
 Study these bridges for inspiration:
@@ -56,7 +57,7 @@ Study these bridges for inspiration:
 ## Priority Queue (what to build next)
 1. ✅ Chain selector modal/dropdown (grid of chain logos instead of native select)
 2. ✅ Token search/selector modal  
-3. Mobile responsive pass
+3. ✅ Mobile responsive pass
 4. Better error states with recovery actions
 5. Animations: page load, card transitions, number counting
 6. Dark/light chain-aware backgrounds
