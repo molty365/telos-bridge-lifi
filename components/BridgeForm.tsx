@@ -202,9 +202,9 @@ export function BridgeForm() {
   // Fee display now handled in QuoteDisplay component
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 sm:space-y-6">
       {/* Toolbar icons above the bridge frame */}
-      <div className="flex justify-end gap-3 pr-1">
+      <div className="flex justify-end gap-2 sm:gap-3 pr-1">
         <button className="w-9 h-9 rounded-full bg-[#1a1a28]/80 border border-gray-800/50 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-all" title="Transaction History">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </button>
@@ -214,10 +214,10 @@ export function BridgeForm() {
       </div>
 
       <div className="bg-gradient-to-br from-gray-800/30 via-gray-700/10 to-gray-800/30 p-[1px] rounded-2xl">
-        <div className="bg-[#12121a]/80 backdrop-blur-xl rounded-2xl p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/40">
+        <div className="bg-[#12121a]/80 backdrop-blur-xl rounded-2xl p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5 shadow-2xl shadow-black/40">
 
         {/* Chain selector row */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-3">
           <ChainSelectorModal
             label="From"
             selectedChainId={fromChain}

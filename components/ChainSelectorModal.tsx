@@ -89,8 +89,8 @@ export function ChainSelectorModal({
 
       {/* Modal */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#12121a] border border-gray-800/50 rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-[#12121a] border-0 sm:border border-gray-800/50 rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full sm:max-w-md max-h-[85vh] sm:max-h-[80vh] overflow-hidden flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-white">Select {label}</h3>
@@ -106,7 +106,7 @@ export function ChainSelectorModal({
             </div>
 
             {/* Search */}
-            <div className="relative mb-6">
+            <div className="relative mb-4 sm:mb-6">
               <svg 
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500"
                 fill="none" 
@@ -121,7 +121,7 @@ export function ChainSelectorModal({
                 placeholder="Search chains..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#1a1a28] border border-gray-700/50 rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:ring-2 focus:ring-telos-cyan/50 focus:border-telos-cyan/50 outline-none transition-all"
+                className="w-full bg-[#1a1a28] border border-gray-700/50 rounded-xl pl-10 pr-4 py-3.5 sm:py-3 text-base sm:text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-telos-cyan/50 focus:border-telos-cyan/50 outline-none transition-all"
               />
             </div>
 
@@ -139,7 +139,7 @@ export function ChainSelectorModal({
                   <p className="text-sm text-gray-600">Try adjusting your search</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-2 sm:gap-3">
                   {filteredChains.map(chain => {
                     const isSelected = chain.id === selectedChainId
                     const chainBrandColor = CHAIN_COLORS[chain.id] || '#666'
@@ -148,10 +148,10 @@ export function ChainSelectorModal({
                       <button
                         key={chain.id}
                         onClick={() => handleChainSelect(chain.id)}
-                        className={`p-4 rounded-xl border transition-all duration-200 text-left group ${
+                        className={`p-4 sm:p-4 rounded-xl border transition-all duration-200 text-left group active:scale-98 ${
                           isSelected 
                             ? 'bg-telos-cyan/10 border-telos-cyan/50 ring-2 ring-telos-cyan/30' 
-                            : 'bg-[#1a1a28] border-gray-700/30 hover:border-gray-600/50 hover:bg-[#1e1e30]'
+                            : 'bg-[#1a1a28] border-gray-700/30 hover:border-gray-600/50 hover:bg-[#1e1e30] active:bg-[#1e1e30]'
                         }`}
                       >
                         <div className="flex items-center gap-3">
