@@ -28,6 +28,13 @@ export const SUPPORTED_CHAINS: ChainInfo[] = [
   { id: 167000, name: 'Taiko', icon: '/telos-bridge-lifi/chains/taiko.svg', nativeCurrency: 'ETH' },
   { id: 169, name: 'Manta Pacific', icon: '/telos-bridge-lifi/chains/manta.svg', nativeCurrency: 'ETH' },
   { id: 30, name: 'Rootstock', icon: '/telos-bridge-lifi/chains/rootstock.svg', nativeCurrency: 'RBTC' },
+  { id: 8822, name: 'IOTA EVM', icon: '/telos-bridge-lifi/chains/iota.png', nativeCurrency: 'IOTA' },
+  { id: 14, name: 'Flare', icon: '/telos-bridge-lifi/chains/flare.png', nativeCurrency: 'FLR' },
+  { id: 80084, name: 'Berachain', icon: '/telos-bridge-lifi/chains/berachain.png', nativeCurrency: 'BERA' },
+  { id: 666666666, name: 'Degen Chain', icon: '/telos-bridge-lifi/chains/degen.png', nativeCurrency: 'DEGEN' },
+  { id: 1514, name: 'Story Protocol', icon: '/telos-bridge-lifi/chains/story.png', nativeCurrency: 'IP' },
+  { id: 1890, name: 'Lightlink', icon: '/telos-bridge-lifi/chains/lightlink.png', nativeCurrency: 'ETH' },
+  { id: 33139, name: 'ApeChain', icon: '/telos-bridge-lifi/chains/apechain.png', nativeCurrency: 'APE' },
 ]
 
 export const CHAIN_MAP = new Map(SUPPORTED_CHAINS.map(c => [c.id, c]))

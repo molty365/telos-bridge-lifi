@@ -27,6 +27,13 @@ export const LZ_V2_EIDS: Record<number, number> = {
   167000: 30290, // Taiko
   169: 30340,   // Manta Pacific
   30: 30333,    // Rootstock
+  8822: 30284,  // IOTA EVM
+  14: 30295,    // Flare  
+  80084: 30362, // Berachain
+  666666666: 30267, // Degen Chain  
+  1514: 30364, // Story Protocol
+  1890: 30309, // Lightlink
+  33139: 30312, // ApeChain
 }
 
 // OFT V2 token configs on Telos
@@ -67,6 +74,13 @@ export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
       167000: '0x77C71633C34C3784ede189d74223122422492a0f', // Taiko StargateOFTUSDC
       169: '0x45f1A95A4D3f3836523F5c83673c797f4d4d263B',    // Manta Pacific StargatePoolUSDC
       30: '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398',     // Rootstock StargateOFTUSDC
+      8822: '0x8e8539e4CcD69123c623a106773F2b0cbbc58746',    // IOTA StargateOFTUSDC
+      14: '0x77C71633C34C3784ede189d74223122422492a0f',      // Flare StargateOFTUSDC
+      80084: '0x2086f755A6d9254045C257ea3d382ef854849B0f',    // Berachain StargateOFTUSDC
+      666666666: '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398', // Degen StargateOFTUSDC
+      1514: '0x9909fa99b7F7ee7F1c0CBf133f411D43083631E6',      // Story StargateOFTUSDC
+      1890: '0x8EE21165Ecb7562BA716c9549C1dE751282b9B33',      // Lightlink StargateOFTUSDC
+      33139: '0x2086f755A6d9254045C257ea3d382ef854849B0f',     // ApeChain StargateOFTUSDC
     },
   },
   USDT: {
@@ -92,6 +106,13 @@ export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
       1116: '0x45f1A95A4D3f3836523F5c83673c797f4d4d263B',   // Core StargatePoolUSDT
       167000: '0x1C10CC06DC6D35970d1D53B2A23c76ef370d4135', // Taiko StargateOFTUSDT
       30: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6',     // Rootstock StargateOFTUSDT
+      8822: '0x77C71633C34C3784ede189d74223122422492a0f',    // IOTA StargateOFTUSDT
+      14: '0x1C10CC06DC6D35970d1D53B2A23c76ef370d4135',      // Flare StargateOFTUSDT
+      80084: '0x3a1293Bdb83bBbDd5Ebf4fAc96605aD2021BbC0f',    // Berachain StargateOFTUSDT
+      666666666: '0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6', // Degen StargateOFTUSDT
+      1514: '0x2D870D17e640eD6c057afBAA0DF56B8DEa5Cf2F6',      // Story StargateOFTUSDT
+      1890: '0x06D538690AF257Da524f25D0CD52fD85b1c2173E',      // Lightlink StargateOFTUSDT
+      33139: '0xEb8d955d8Ae221E5b502851ddd78E6C4498dB4f6',     // ApeChain StargateOFTUSDT
     },
   },
   WBTC: {
@@ -127,6 +148,12 @@ export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
       100: '0x9c2dc7377717603eB92b2655c5f2E7997a4945BD',    // Gnosis StargateOFTETH
       169: '0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590',    // Manta Pacific StargatePoolNative
       30: '0x45f1A95A4D3f3836523F5c83673c797f4d4d263B',     // Rootstock StargateOFTETH
+      14: '0x8e8539e4CcD69123c623a106773F2b0cbbc58746',      // Flare StargateOFTETH
+      80084: '0xA272fFe20cFfe769CdFc4b63088DCD2C82a2D8F9',    // Berachain StargateOFTETH
+      666666666: '0x45f1A95A4D3f3836523F5c83673c797f4d4d263B', // Degen StargateOFTETH
+      1514: '0x4683CE822272CD66CEa73F5F1f9f5cBcaEF4F066',      // Story StargateOFTETH
+      1890: '0x8731d54E9D02c286767d56ac03e8037C07e01e98',      // Lightlink StargatePoolNative
+      33139: '0x28E0f0eed8d6A6a96033feEe8b2D7F32EB5CCc48',     // ApeChain StargateOFTETH
     },
   },
 }
