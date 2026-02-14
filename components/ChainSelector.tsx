@@ -32,15 +32,21 @@ export function ChainSelector({
   color 
 }: ChainSelectorProps) {
   const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
   const ref = useRef<HTMLDivElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
   const chainColor = color || CHAIN_COLORS[selectedChainId] || '#666'
   const selected = chains.find(c => c.id === selectedChainId)
+  const filteredChains = chains.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setSearch('') }
     }
-    if (open) document.addEventListener('mousedown', handler)
+    if (open) {
+      document.addEventListener('mousedown', handler)
+      setTimeout(() => searchRef.current?.focus(), 50)
+    }
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
@@ -71,15 +77,29 @@ export function ChainSelector({
 
       {open && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-[#14141e] border border-gray-700/40 rounded-xl p-3 z-50 shadow-2xl shadow-black/60 animate-in fade-in slide-in-from-top-2 duration-150 min-w-[200px]">
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2 px-1">Select {label.toLowerCase()} chain</p>
+          <div className="relative mb-2">
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              ref={searchRef}
+              type="text"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-[#1a1a28] border border-gray-700/40 rounded-lg pl-8 pr-3 py-2 text-xs text-white placeholder-gray-500 focus:ring-1 focus:ring-telos-cyan/40 focus:border-telos-cyan/40 outline-none transition-all"
+            />
+          </div>
           <div className="grid grid-cols-3 gap-1.5 max-h-[280px] overflow-y-auto">
-            {chains.map(chain => {
+            {filteredChains.length === 0 ? (
+              <div className="col-span-3 text-center py-4 text-gray-500 text-xs">No chains found</div>
+            ) : filteredChains.map(chain => {
               const cc = CHAIN_COLORS[chain.id] || '#666'
               const isSelected = chain.id === selectedChainId
               return (
                 <button
                   key={chain.id}
-                  onClick={() => { onChainChange(chain.id); setOpen(false) }}
+                  onClick={() => { onChainChange(chain.id); setOpen(false); setSearch('') }}
                   className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg transition-all duration-150 ${
                     isSelected 
                       ? 'bg-telos-cyan/10 ring-1 ring-telos-cyan/30' 
