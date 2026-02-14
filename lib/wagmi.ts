@@ -111,10 +111,42 @@ const apechain = {
   blockExplorers: { default: { name: 'ApeChain Explorer', url: 'https://apechain.calderaexplorer.xyz' } },
 } as const satisfies Chain
 
+const sonic = {
+  id: 146,
+  name: 'Sonic',
+  nativeCurrency: { name: 'Sonic', symbol: 'S', decimals: 18 },
+  rpcUrls: { default: { http: ['https://rpc.soniclabs.com'] } },
+  blockExplorers: { default: { name: 'SonicScan', url: 'https://sonicscan.org' } },
+} as const satisfies Chain
+
+const gravity = {
+  id: 1625,
+  name: 'Gravity',
+  nativeCurrency: { name: 'Gravity', symbol: 'G', decimals: 18 },
+  rpcUrls: { default: { http: ['https://rpc.gravity.xyz'] } },
+  blockExplorers: { default: { name: 'Gravity Explorer', url: 'https://explorer.gravity.xyz' } },
+} as const satisfies Chain
+
+const flowEvm = {
+  id: 747,
+  name: 'Flow EVM',
+  nativeCurrency: { name: 'Flow', symbol: 'FLOW', decimals: 18 },
+  rpcUrls: { default: { http: ['https://mainnet.evm.nodes.onflow.org'] } },
+  blockExplorers: { default: { name: 'Flow Diver', url: 'https://evm.flowdiver.io' } },
+} as const satisfies Chain
+
+const xdc = {
+  id: 50,
+  name: 'XDC Network',
+  nativeCurrency: { name: 'XDC', symbol: 'XDC', decimals: 18 },
+  rpcUrls: { default: { http: ['https://erpc.xinfin.network'] } },
+  blockExplorers: { default: { name: 'XDC Explorer', url: 'https://explorer.xinfin.network' } },
+} as const satisfies Chain
+
 export const config = getDefaultConfig({
   appName: 'Telos Bridge',
   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID || 'e77cdab1b5834264860090a1d10b82b4',
-  chains: [telosWithRpc, mainnet, base, bsc, arbitrum, polygon, avalanche, optimism, scroll, mantle, linea, sei, kava, kaia, metis, aurora, gnosis, core, taiko, manta, rootstock, iotaEvm, flare, berachain, degenChain, story, lightlink, apechain],
+  chains: [telosWithRpc, mainnet, base, bsc, arbitrum, polygon, avalanche, optimism, scroll, mantle, linea, sei, kava, kaia, metis, aurora, gnosis, core, taiko, manta, rootstock, iotaEvm, flare, berachain, degenChain, story, lightlink, apechain, sonic, gravity, flowEvm, xdc],
   transports: {
     [telos.id]: http('https://rpc.telos.net/evm'),
   },

@@ -35,6 +35,10 @@ export const SUPPORTED_CHAINS: ChainInfo[] = [
   { id: 1514, name: 'Story Protocol', icon: '/telos-bridge-lifi/chains/story.png', nativeCurrency: 'IP' },
   { id: 1890, name: 'Lightlink', icon: '/telos-bridge-lifi/chains/lightlink.png', nativeCurrency: 'ETH' },
   { id: 33139, name: 'ApeChain', icon: '/telos-bridge-lifi/chains/apechain.png', nativeCurrency: 'APE' },
+  { id: 146, name: 'Sonic', icon: '/telos-bridge-lifi/chains/sonic.png', nativeCurrency: 'S' },
+  { id: 1625, name: 'Gravity', icon: '/telos-bridge-lifi/chains/gravity.png', nativeCurrency: 'G' },
+  { id: 747, name: 'Flow EVM', icon: '/telos-bridge-lifi/chains/flow.png', nativeCurrency: 'FLOW' },
+  { id: 50, name: 'XDC Network', icon: '/telos-bridge-lifi/chains/xdc.png', nativeCurrency: 'XDC' },
 ]
 
 export const CHAIN_MAP = new Map(SUPPORTED_CHAINS.map(c => [c.id, c]))
