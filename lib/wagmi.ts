@@ -143,10 +143,18 @@ const xdc = {
   blockExplorers: { default: { name: 'XDC Explorer', url: 'https://explorer.xinfin.network' } },
 } as const satisfies Chain
 
+const vana = {
+  id: 1480,
+  name: 'Vana',
+  nativeCurrency: { name: 'Vana', symbol: 'VANA', decimals: 18 },
+  rpcUrls: { default: { http: ['https://rpc.vana.org'] } },
+  blockExplorers: { default: { name: 'VanaScan', url: 'https://vanascan.io' } },
+} as const satisfies Chain
+
 export const config = getDefaultConfig({
   appName: 'Telos Bridge',
   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID || 'e77cdab1b5834264860090a1d10b82b4',
-  chains: [telosWithRpc, mainnet, base, bsc, arbitrum, polygon, avalanche, optimism, scroll, mantle, linea, sei, kava, kaia, metis, aurora, gnosis, core, taiko, manta, rootstock, iotaEvm, flare, berachain, degenChain, story, lightlink, apechain, sonic, gravity, flowEvm, xdc],
+  chains: [telosWithRpc, mainnet, base, bsc, arbitrum, polygon, avalanche, optimism, scroll, mantle, linea, sei, kava, kaia, metis, aurora, gnosis, core, taiko, manta, rootstock, iotaEvm, flare, berachain, degenChain, story, lightlink, apechain, sonic, gravity, flowEvm, xdc, vana],
   transports: {
     [telos.id]: http('https://rpc.telos.net/evm'),
   },

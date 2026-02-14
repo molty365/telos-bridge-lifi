@@ -38,6 +38,7 @@ export const LZ_V2_EIDS: Record<number, number> = {
   1625: 30361,  // Gravity
   747: 30329,   // Flow EVM
   50: 30327,    // XDC Network
+  1480: 30370,  // Vana
 }
 
 // OFT V2 token configs on Telos
@@ -89,6 +90,7 @@ export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
       1625: '0xbbA60da06c2c5424f03f7434542280FCAd453d10',      // Gravity StargateOFTUSDC
       747: '0x45f1A95A4D3f3836523F5c83673c797f4d4d263B',       // Flow StargateOFTUSDC
       50: '0x8EE21165Ecb7562BA716c9549C1dE751282b9B33',        // XDC StargateOFTUSDC
+      1480: '0x9909fa99b7F7ee7F1c0CBf133f411D43083631E6',     // Vana StargateOFTUSDC
     },
   },
   USDT: {
@@ -123,6 +125,7 @@ export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
       33139: '0xEb8d955d8Ae221E5b502851ddd78E6C4498dB4f6',     // ApeChain StargateOFTUSDT
       1625: '0x549943e04f40284185054145c6E4e9568C1D3241',      // Gravity StargateOFTUSDT
       747: '0xAF54BE5B6eEc24d6BFACf1cce4eaF680A8239398',       // Flow StargateOFTUSDT
+      1480: '0x2D870D17e640eD6c057afBAA0DF56B8DEa5Cf2F6',     // Vana StargateOFTUSDT
     },
   },
   WBTC: {
@@ -167,6 +170,7 @@ export const OFT_V2_TOKENS: Record<string, OftV2Token> = {
       146: '0xe9aBA835f813ca05E50A6C0ce65D0D74390F7dE7',       // Sonic StargatePoolETH
       1625: '0x88853D410299BCBfE5fCC9Eef93c03115E908279',      // Gravity StargateOFTETH
       747: '0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590',       // Flow StargatePoolNative
+      1480: '0x4683CE822272CD66CEa73F5F1f9f5cBcaEF4F066',     // Vana StargateOFTETH
     },
   },
 }
