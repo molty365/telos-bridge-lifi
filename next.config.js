@@ -2,6 +2,6 @@
 const nextConfig = {
   output: 'export',
   images: { unoptimized: true },
-  basePath: '/telos-bridge-lifi',
+  // basePath removed for custom domain (bridge.telos.net)
 }
 module.exports = nextConfig
