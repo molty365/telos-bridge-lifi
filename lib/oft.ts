@@ -87,6 +87,29 @@ function addressToBytes32(addr: Address): Hex {
   return ('0x' + addr.slice(2).toLowerCase().padStart(64, '0')) as Hex
 }
 
+const ERC20_APPROVE_ABI = [
+  {
+    name: 'approve',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'spender', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+  {
+    name: 'allowance',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'spender', type: 'address' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+] as const
+
 export function isTlosOftRoute(fromChain: number, toChain: number, fromToken: string, toToken: string): boolean {
   return (
     fromToken.toUpperCase() === 'TLOS' &&
@@ -369,30 +392,78 @@ export async function executeOftSend(
   // Add 10% buffer to fee; LayerZero refunds any excess
   const feeWithBuffer = nativeFee + nativeFee / 10n
 
-  // NativeOFT: msg.value = TLOS amount + LZ fee (no ERC20 approval needed)
-  const totalValue = amountLD + feeWithBuffer
+  let txHash: Hex
 
-  onStatus('Confirm in wallet...')
-  const txHash = await walletClient.writeContract({
-    address: oftAddress,
-    abi: OFT_V1_ABI,
-    functionName: 'sendFrom',
-    args: [
-      fromAddress,
-      dstChainId,
-      toBytes32,
-      amountLD,
-      {
-        refundAddress: fromAddress,
-        zroPaymentAddress: '0x0000000000000000000000000000000000000000' as Address,
-        adapterParams: DEFAULT_ADAPTER_PARAMS,
-      },
-    ],
-    value: totalValue,
-    gas: 500000n,
-    chain: undefined,
-    account: fromAddress,
-  })
+  if (fromChain === 40) {
+    // Telos source: NativeOFT Adapter — msg.value = TLOS amount + LZ fee, no ERC-20 approval needed
+    const totalValue = amountLD + feeWithBuffer
+    onStatus('Confirm in wallet...')
+    txHash = await walletClient.writeContract({
+      address: oftAddress,
+      abi: OFT_V1_ABI,
+      functionName: 'sendFrom',
+      args: [
+        fromAddress,
+        dstChainId,
+        toBytes32,
+        amountLD,
+        {
+          refundAddress: fromAddress,
+          zroPaymentAddress: '0x0000000000000000000000000000000000000000' as Address,
+          adapterParams: DEFAULT_ADAPTER_PARAMS,
+        },
+      ],
+      value: totalValue,
+      gas: 500000n,
+      chain: undefined,
+      account: fromAddress,
+    })
+  } else {
+    // Non-Telos source: standard OFT ERC-20 — approve first, then sendFrom with msg.value = fee only
+    onStatus('Checking TLOS token allowance...')
+    const currentAllowance = await publicClient.readContract({
+      address: oftAddress,
+      abi: ERC20_APPROVE_ABI,
+      functionName: 'allowance',
+      args: [fromAddress, oftAddress],
+    }) as bigint
+
+    if (currentAllowance < amountLD) {
+      onStatus('Approving TLOS token spend...')
+      const approveTx = await walletClient.writeContract({
+        address: oftAddress,
+        abi: ERC20_APPROVE_ABI,
+        functionName: 'approve',
+        args: [oftAddress, amountLD],
+        chain: undefined,
+        account: fromAddress,
+      })
+      onStatus('Waiting for approval confirmation...')
+      await publicClient.waitForTransactionReceipt({ hash: approveTx })
+    }
+
+    onStatus('Confirm bridge transaction in wallet...')
+    txHash = await walletClient.writeContract({
+      address: oftAddress,
+      abi: OFT_V1_ABI,
+      functionName: 'sendFrom',
+      args: [
+        fromAddress,
+        dstChainId,
+        toBytes32,
+        amountLD,
+        {
+          refundAddress: fromAddress,
+          zroPaymentAddress: '0x0000000000000000000000000000000000000000' as Address,
+          adapterParams: DEFAULT_ADAPTER_PARAMS,
+        },
+      ],
+      value: feeWithBuffer, // fee only, not amount
+      gas: 500000n,
+      chain: undefined,
+      account: fromAddress,
+    })
+  }
 
   onStatus('Transaction submitted, waiting for confirmation...')
   await publicClient.waitForTransactionReceipt({ hash: txHash })
