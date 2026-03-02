@@ -20,6 +20,7 @@ jobs:
         env:
           # Custom domain is live - empty basePath for root domain serving
           NEXT_PUBLIC_BASE_PATH: ''
+          NEXT_PUBLIC_WC_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_WC_PROJECT_ID }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out
