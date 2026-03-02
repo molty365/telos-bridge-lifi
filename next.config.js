@@ -2,6 +2,8 @@
 const nextConfig = {
   output: 'export',
   images: { unoptimized: true },
-  // basePath removed for custom domain (bridge.telos.net)
+  // basePath used for molty365.github.io/telos-bridge-lifi/ 
+  // Set NEXT_PUBLIC_BASE_PATH='' in the deploy workflow when bridge.telos.net DNS is live
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH ?? '/telos-bridge-lifi',
 }
 module.exports = nextConfig

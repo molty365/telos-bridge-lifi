@@ -17,6 +17,9 @@ jobs:
           cache: npm
       - run: npm ci --legacy-peer-deps
       - run: npx next build
+        env:
+          # Set to '' (empty string) once bridge.telos.net DNS is live
+          NEXT_PUBLIC_BASE_PATH: '/telos-bridge-lifi'
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out
