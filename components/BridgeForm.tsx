@@ -57,11 +57,32 @@ export function BridgeForm() {
   const { data: nativeBalance } = useBalance({ address, chainId: fromChain })
 
   // ERC-20 token address for balance lookup
-  // TLOS on non-Telos chains is an OFT ERC-20, not native
-  // WBTC is always ERC-20 (via peers map)
+  // Rule: if the selected token IS the chain's native currency, use native balance.
+  // Otherwise, look up the ERC-20 address for that token on this chain.
+  const chainNativeCurrency = CHAIN_MAP.get(fromChain)?.nativeCurrency
+  const isNativeToken = token === chainNativeCurrency
+
   const erc20TokenAddress: Address | undefined = (() => {
-    if (token === 'TLOS' && fromChain !== 40) return TLOS_OFT_ADDRESSES[fromChain] as Address
-    if (token === 'WBTC') return (OFT_V2_TOKENS['WBTC']?.peers?.[fromChain] ?? OFT_V2_TOKENS['WBTC']?.address) as Address | undefined
+    if (isNativeToken) return undefined // native balance, no token address needed
+
+    // TLOS on non-Telos chains = OFT ERC-20
+    if (token === 'TLOS') return TLOS_OFT_ADDRESSES[fromChain] as Address | undefined
+
+    // V2 OFT tokens
+    const v2Config = OFT_V2_TOKENS[token]
+    if (v2Config) {
+      if (fromChain === 40) {
+        // On Telos: user holds the underlying token (e.g. WETH, bridged USDC)
+        return (v2Config.underlyingAddress ?? v2Config.address) as Address
+      }
+      // On other chains: for non-Stargate (WBTC), peers map has the token address
+      // For Stargate tokens (USDC/USDT/ETH), peers are pool addresses, not the user's token
+      // ETH on ETH-native chains is already handled by isNativeToken above
+      if (!v2Config.isStargate) {
+        return v2Config.peers?.[fromChain] as Address | undefined
+      }
+    }
+
     return undefined
   })()
 
