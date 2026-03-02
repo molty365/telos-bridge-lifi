@@ -5,6 +5,7 @@ import { useAccount, useBalance, useSwitchChain, useWalletClient, usePublicClien
 import { SUPPORTED_CHAINS, CHAIN_MAP } from '@/lib/chains'
 import { isTlosOftRoute, quoteOftSend, executeOftSend, isMstOftRoute, quoteMstSend, executeMstSend, getMstSupportedChains, TLOS_OFT_ADDRESSES, MST_OFT_ADDRESSES, type OftQuoteResult } from '@/lib/oft'
 import { isOftV2Route, getAvailableOftV2Tokens, quoteOftV2Send, executeOftV2Send, OFT_V2_TOKENS, type OftV2QuoteResult } from '@/lib/oft-v2'
+import type { Address } from 'viem'
 import { AmountInput } from './AmountInput'
 import { ChainSelectorModal } from './ChainSelectorModal'
 import { TokenSelectorModal } from './TokenSelectorModal'
@@ -55,12 +56,28 @@ export function BridgeForm() {
 
   const { data: nativeBalance } = useBalance({ address, chainId: fromChain })
 
+  // ERC-20 token address for balance lookup
+  // TLOS on non-Telos chains is an OFT ERC-20, not native
+  // WBTC is always ERC-20 (via peers map)
+  const erc20TokenAddress: Address | undefined = (() => {
+    if (token === 'TLOS' && fromChain !== 40) return TLOS_OFT_ADDRESSES[fromChain] as Address
+    if (token === 'WBTC') return (OFT_V2_TOKENS['WBTC']?.peers?.[fromChain] ?? OFT_V2_TOKENS['WBTC']?.address) as Address | undefined
+    return undefined
+  })()
+
+  const { data: erc20Balance } = useBalance({
+    address,
+    chainId: fromChain,
+    token: erc20TokenAddress,
+  })
+
   const isOft = isTlosOftRoute(fromChain, toChain, token, token)
   const isMst = isMstOftRoute(fromChain, toChain, token, token)
   const isV2 = !isOft && !isMst && isOftV2Route(token, fromChain, toChain)
   const hasQuote = !!(oftQuote || v2Quote)
   const wrongNetwork = address && walletChainId !== fromChain
-  const displayBalance = nativeBalance // TODO: add ERC20 balance for WBTC/WETH
+  // Use ERC-20 balance when applicable, otherwise native
+  const displayBalance = erc20TokenAddress ? erc20Balance : nativeBalance
 
   const chainName = (id: number) => CHAIN_MAP.get(id)?.name || `Chain ${id}`
   const chainIcon = (id: number) => CHAIN_MAP.get(id)?.icon
