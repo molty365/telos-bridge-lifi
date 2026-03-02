@@ -7,7 +7,7 @@ export interface ChainInfo {
 
 // Chains with Stargate/LayerZero routes to Telos
 export const SUPPORTED_CHAINS: ChainInfo[] = [
-  { id: 40, name: 'Telos', icon: '/telos-bridge-lifi/chains/telos.svg', nativeCurrency: 'TLOS' },
+  { id: 40, name: 'Telos', icon: '/telos-bridge-lifi/chains/telos.png', nativeCurrency: 'TLOS' },
   { id: 1, name: 'Ethereum', icon: '/telos-bridge-lifi/chains/ethereum.png', nativeCurrency: 'ETH' },
   { id: 8453, name: 'Base', icon: '/telos-bridge-lifi/chains/base.png', nativeCurrency: 'ETH' },
   { id: 56, name: 'BSC', icon: '/telos-bridge-lifi/chains/bsc.png', nativeCurrency: 'BNB' },
@@ -23,7 +23,7 @@ export const SUPPORTED_CHAINS: ChainInfo[] = [
   { id: 8217, name: 'Kaia', icon: '/telos-bridge-lifi/chains/kaia.png', nativeCurrency: 'KAIA' },
   { id: 1088, name: 'Metis', icon: '/telos-bridge-lifi/chains/metis.png', nativeCurrency: 'METIS' },
   { id: 1313161554, name: 'Aurora', icon: '/telos-bridge-lifi/chains/aurora.png', nativeCurrency: 'ETH' },
-  { id: 100, name: 'Gnosis', icon: '/telos-bridge-lifi/chains/gnosis.svg', nativeCurrency: 'XDAI' },
+  { id: 100, name: 'Gnosis', icon: '/telos-bridge-lifi/chains/gnosis.png', nativeCurrency: 'XDAI' },
   { id: 1116, name: 'Core', icon: '/telos-bridge-lifi/chains/core.svg', nativeCurrency: 'CORE' },
   { id: 167000, name: 'Taiko', icon: '/telos-bridge-lifi/chains/taiko.svg', nativeCurrency: 'ETH' },
   { id: 169, name: 'Manta Pacific', icon: '/telos-bridge-lifi/chains/manta.svg', nativeCurrency: 'ETH' },

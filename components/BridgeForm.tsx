@@ -2,9 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAccount, useBalance, useSwitchChain, useWalletClient, usePublicClient } from 'wagmi'
+import { getWalletClient } from '@wagmi/core'
+import { config } from '@/lib/wagmi'
+import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { SUPPORTED_CHAINS, CHAIN_MAP } from '@/lib/chains'
 import { isTlosOftRoute, quoteOftSend, executeOftSend, isMstOftRoute, quoteMstSend, executeMstSend, getMstSupportedChains, TLOS_OFT_ADDRESSES, MST_OFT_ADDRESSES, type OftQuoteResult } from '@/lib/oft'
-import { isOftV2Route, getAvailableOftV2Tokens, quoteOftV2Send, executeOftV2Send, OFT_V2_TOKENS, type OftV2QuoteResult } from '@/lib/oft-v2'
+import { isOftV2Route, getAvailableOftV2Tokens, quoteOftV2Send, executeOftV2Send, OFT_V2_TOKENS, type OftV2QuoteResult, type OftV2Token } from '@/lib/oft-v2'
+import type { Address } from 'viem'
 
 const CHAIN_COLORS: Record<number, string> = {
   1: '#627EEA', 40: '#00F2FE', 8453: '#0052FF', 56: '#F0B90B',
@@ -20,12 +24,26 @@ const TOKEN_LOGOS: Record<string, string> = {
   MST: '/telos-bridge-lifi/tokens/MST.svg',
 }
 
+const TOKEN_NAMES: Record<string, string> = {
+  TLOS: 'Telos',
+  USDC: 'Bridged USDC (Stargate)',
+  USDT: 'Tether USD',
+  ETH: 'Ethereum',
+  WBTC: 'Wrapped BTC',
+  MST: 'Meridian Token',
+}
+
 export function BridgeForm() {
   const { address, chainId: walletChainId } = useAccount()
+  const { connectModalOpen, openConnectModal } = useConnectModal()
   const { switchChainAsync } = useSwitchChain()
   const { data: walletClient } = useWalletClient()
   const [fromChain, setFromChain] = useState(40)
   const [toChain, setToChain] = useState(8453)
+  const [chainSearch, setChainSearch] = useState('')
+  const [showChainDropdown, setShowChainDropdown] = useState<number | null>(null) // 0=from, 1=to, null=closed
+  const [tokenSearch, setTokenSearch] = useState('')
+  const [showTokenDropdown, setShowTokenDropdown] = useState(false)
   const [token, setToken] = useState('TLOS')
   const [amount, setAmount] = useState('')
   const [slippage, setSlippage] = useState(0.5)
@@ -47,7 +65,25 @@ export function BridgeForm() {
   const isV2 = !isOft && !isMst && isOftV2Route(token, fromChain, toChain)
   const hasQuote = !!(oftQuote || v2Quote)
   const wrongNetwork = address && walletChainId !== fromChain
-  const displayBalance = nativeBalance // TODO: add ERC20 balance for WBTC/WETH
+
+  // ERC-20 token address for balance lookup
+  // TLOS on non-Telos chains = OFT contract
+  // WBTC on any chain = OFT contract (peers map)
+  // ETH/USDC/USDT on non-Telos chains = native ETH (no token address needed)
+  const erc20TokenAddress: Address | undefined = (() => {
+    if (token === 'TLOS' && fromChain !== 40) return TLOS_OFT_ADDRESSES[fromChain] as Address
+    if (token === 'WBTC') return (OFT_V2_TOKENS['WBTC']?.peers?.[fromChain] ?? OFT_V2_TOKENS['WBTC']?.address) as Address | undefined
+    return undefined
+  })()
+
+  const { data: erc20Balance } = useBalance({
+    address,
+    chainId: fromChain,
+    token: erc20TokenAddress,
+  })
+
+  // On Telos, TLOS is native. On other chains, TLOS is ERC-20. WBTC is always ERC-20.
+  const displayBalance = erc20TokenAddress ? erc20Balance : nativeBalance
 
   const chainName = (id: number) => CHAIN_MAP.get(id)?.name || `Chain ${id}`
   const chainIcon = (id: number) => CHAIN_MAP.get(id)?.icon
@@ -76,6 +112,11 @@ export function BridgeForm() {
 
   const filteredChains = getChainsForToken(token)
 
+  // Filter chains by search term
+  const searchedChains = chainSearch 
+    ? filteredChains.filter(c => c.name.toLowerCase().includes(chainSearch.toLowerCase()))
+    : filteredChains
+
   // Build token list: TLOS (always) + V2 OFT tokens available for this route
   const availableTokens = useCallback(() => {
     const tokens = ['TLOS']
@@ -89,6 +130,11 @@ export function BridgeForm() {
   }, [fromChain, toChain])
 
   const tokenList = availableTokens()
+
+  // Filter tokens by search
+  const searchedTokens = tokenSearch
+    ? tokenList.filter(t => t.toLowerCase().includes(tokenSearch.toLowerCase()))
+    : tokenList
 
   // Reset token if not available on new route
   useEffect(() => {
@@ -157,16 +203,20 @@ export function BridgeForm() {
         setBridgeStatus('Switching network…')
         await switchChainAsync({ chainId: fromChain })
       }
+      // Always get a fresh walletClient bound to fromChain — the hook value can be stale after a switch
+      const freshWalletClient = await getWalletClient(config, { chainId: fromChain })
+      if (!freshWalletClient) throw new Error('Could not get wallet client for chain')
+
       if (oftQuote && isMst) {
-        await executeMstSend(walletClient, publicClient, fromChain, toChain, amount,
+        await executeMstSend(freshWalletClient, publicClient, fromChain, toChain, amount,
           address, address, (s: string) => setBridgeStatus(s))
         setOftQuote(null)
       } else if (oftQuote) {
-        await executeOftSend(walletClient, publicClient, fromChain, toChain, amount,
+        await executeOftSend(freshWalletClient, publicClient, fromChain, toChain, amount,
           address, address, slippage, (s: string) => setBridgeStatus(s))
         setOftQuote(null)
       } else if (v2Quote) {
-        await executeOftV2Send(walletClient, publicClient, token, fromChain, toChain, amount,
+        await executeOftV2Send(freshWalletClient, publicClient, token, fromChain, toChain, amount,
           address, address, (s: string) => setBridgeStatus(s))
         setV2Quote(null)
       }
@@ -198,14 +248,20 @@ export function BridgeForm() {
   }
 
   const feeCurrency = CHAIN_MAP.get(fromChain)?.nativeCurrency || 'TLOS'
+  const formatFee = (val: string) => {
+    const n = parseFloat(val)
+    if (n >= 1) return n.toFixed(3)
+    if (n >= 0.001) return n.toFixed(4)
+    return n.toFixed(6)
+  }
   const feeDisplay = oftQuote
-    ? `~${parseFloat(oftQuote.nativeFeeFormatted).toFixed(0)} ${feeCurrency}${oftQuote.feeEstimated ? ' (est · excess refunded)' : ''}`
+    ? `~${formatFee(oftQuote.nativeFeeFormatted)} ${feeCurrency}`
     : v2Quote
-    ? `~${parseFloat(v2Quote.nativeFeeFormatted).toFixed(4)} ${feeCurrency}${v2Quote.feeEstimated ? ' (est · excess refunded)' : ''}`
+    ? `~${formatFee(v2Quote.nativeFeeFormatted)} ${feeCurrency}`
     : ''
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Toolbar icons above the bridge frame */}
       <div className="flex justify-end gap-3 pr-1">
         <button className="w-9 h-9 rounded-full bg-[#1a1a28]/80 border border-gray-800/50 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-all" title="Transaction History">
@@ -217,22 +273,123 @@ export function BridgeForm() {
       </div>
 
       <div className="bg-gradient-to-br from-gray-800/30 via-gray-700/10 to-gray-800/30 p-[1px] rounded-2xl">
-        <div className="bg-[#12121a]/80 backdrop-blur-xl rounded-2xl p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/40">
+        <div className="bg-[#12121a]/80 backdrop-blur-xl rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xl shadow-black/40">
 
         {/* Chain selector row */}
+        {/* Mobile bottom sheet + desktop backdrop */}
+        {(showChainDropdown !== null || showTokenDropdown) && (
+          <>
+            {/* Desktop: transparent click-away */}
+            <div className="fixed inset-0 z-40 hidden sm:block" onClick={() => { setShowChainDropdown(null); setShowTokenDropdown(false); setChainSearch(''); setTokenSearch(''); }} />
+            {/* Mobile: Superbridge-style bottom sheet */}
+            <div className="fixed inset-0 z-50 sm:hidden flex flex-col justify-end">
+              {/* Blurred backdrop */}
+              <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => { setShowChainDropdown(null); setShowTokenDropdown(false); setChainSearch(''); setTokenSearch(''); }} />
+              <div className="relative bg-[#1c1c1e] rounded-t-3xl flex flex-col" style={{ maxHeight: '85vh', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+                {/* Header: title + X */}
+                <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
+                  <p className="text-white font-bold text-xl">
+                    {showTokenDropdown ? 'Select a token' : showChainDropdown === 0 ? 'From chain' : 'To chain'}
+                  </p>
+                  <button
+                    onClick={() => { setShowChainDropdown(null); setShowTokenDropdown(false); setChainSearch(''); setTokenSearch(''); }}
+                    className="w-7 h-7 rounded-full bg-[#2c2c2e] flex items-center justify-center text-gray-400 hover:text-white">
+                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                  </button>
+                </div>
+                {/* Search */}
+                <div className="px-4 pb-2 shrink-0">
+                  <input
+                    type="text"
+                    placeholder="Search"
+                    value={showTokenDropdown ? tokenSearch : chainSearch}
+                    onChange={e => showTokenDropdown ? setTokenSearch(e.target.value) : setChainSearch(e.target.value)}
+                    className="w-full bg-[#2c2c2e] text-white placeholder-gray-500 px-4 py-2.5 rounded-xl outline-none"
+                    style={{ fontSize: '16px' }}
+                  />
+                </div>
+                {/* List / Grid */}
+                <div className="overflow-y-auto flex-1 px-3 pb-3">
+                  {showTokenDropdown
+                    ? searchedTokens.map(t => (
+                        <div key={t} onClick={() => { setToken(t); setShowTokenDropdown(false); setTokenSearch(''); }}
+                          className={`flex items-center gap-4 px-3 py-3.5 rounded-2xl cursor-pointer active:bg-[#2c2c2e] ${t === token ? 'bg-[#2c2c2e]' : ''}`}>
+                          {TOKEN_LOGOS[t]
+                            ? <img src={TOKEN_LOGOS[t]} alt="" className="w-10 h-10 rounded-full shrink-0" />
+                            : <div className="w-10 h-10 rounded-full bg-gray-700 shrink-0" />}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white font-semibold text-base leading-tight">{TOKEN_NAMES[t] || t}</p>
+                            <p className="text-gray-500 text-sm leading-tight mt-0.5">{t}</p>
+                          </div>
+                          <span className="text-gray-500 text-base">0</span>
+                        </div>
+                      ))
+                    : (
+                        <div className="grid grid-cols-3 gap-1.5 pt-1">
+                          {searchedChains.map(c => {
+                            const isSelected = c.id === (showChainDropdown === 0 ? fromChain : toChain)
+                            const bg = CHAIN_COLORS[c.id] || '#3a3a4a'
+                            return (
+                              <div key={c.id} onClick={() => {
+                                if (showChainDropdown === 0) handleFromChain(c.id); else handleToChain(c.id)
+                                setShowChainDropdown(null); setChainSearch('');
+                              }}
+                                className={`relative flex flex-col items-center justify-center gap-1 rounded-xl p-2.5 cursor-pointer active:scale-95 transition-transform ${isSelected ? 'ring-2 ring-telos-cyan' : ''}`}
+                                style={{ background: `${bg}22` }}>
+                                {chainIcon(c.id)
+                                  ? <img src={chainIcon(c.id)} alt="" className="w-7 h-7 rounded-lg" />
+                                  : <div className="w-7 h-7 rounded-lg" style={{ background: bg }} />}
+                                <p className="text-white text-xs font-medium text-center leading-tight line-clamp-2">{c.name}</p>
+                                {isSelected && <div className="absolute top-1 right-1 w-3 h-3 rounded-full bg-telos-cyan flex items-center justify-center">
+                                  <svg width="7" height="5" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                </div>}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )
+                  }
+                </div>
+              </div>
+            </div>
+          </>
+        )}
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-3 sm:p-4 hover:bg-[#1e1e30] hover:border hover:border-gray-600/30 transition-all duration-200">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">From</p>
-            <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-2.5 sm:p-3 hover:bg-[#1e1e30] hover:border hover:border-gray-600/30 transition-all duration-200 relative">
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">From</p>
+            <div className="flex items-center gap-2 sm:gap-3" onClick={() => setShowChainDropdown(showChainDropdown === 0 ? null : 0)}>
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
                 style={{ background: `${CHAIN_COLORS[fromChain] || '#666'}30` }}>
                 {chainIcon(fromChain) && <img src={chainIcon(fromChain)} alt="" className="w-5 h-5 sm:w-6 sm:h-6" />}
               </div>
-              <select value={fromChain} onChange={e => handleFromChain(Number(e.target.value))}
-                className="bg-transparent text-white font-semibold text-sm sm:text-base outline-none cursor-pointer flex-1 min-w-0 truncate">
-                {filteredChains.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <div className="flex-1 min-w-0 truncate text-white font-semibold text-sm sm:text-base cursor-pointer flex items-center gap-1">
+                {chainName(fromChain)}
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </div>
             </div>
+            {/* Searchable Dropdown */}
+            {showChainDropdown === 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1a28] border border-gray-700 rounded-xl z-50 overflow-hidden shadow-xl hidden sm:block">
+                <div className="p-2 border-b border-gray-700">
+                  <input 
+                    type="text" 
+                    placeholder="Search chain..." 
+                    value={chainSearch}
+                    onChange={e => setChainSearch(e.target.value)}
+                    className="w-full bg-[#0a0a0f] text-white px-3 py-2 rounded-lg text-base outline-none border border-gray-700 focus:border-telos-cyan"
+                  />
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  {searchedChains.map(c => (
+                    <div key={c.id} onClick={() => { handleFromChain(c.id); setShowChainDropdown(null); setChainSearch(''); }}
+                      className={`flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-800 ${c.id === fromChain ? 'bg-gray-800' : ''}`}>
+                      {chainIcon(c.id) && <img src={chainIcon(c.id)} alt="" className="w-5 h-5" />}
+                      <span className="text-white text-sm">{c.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <button onClick={swap}
@@ -240,18 +397,41 @@ export function BridgeForm() {
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 2L13 5L10 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 5H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M6 14L3 11L6 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M13 11H3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
 
-          <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-3 sm:p-4 hover:bg-[#1e1e30] hover:border hover:border-gray-600/30 transition-all duration-200">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">To</p>
-            <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-2.5 sm:p-3 hover:bg-[#1e1e30] hover:border hover:border-gray-600/30 transition-all duration-200 relative">
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">To</p>
+            <div className="flex items-center gap-2 sm:gap-3" onClick={() => setShowChainDropdown(showChainDropdown === 1 ? null : 1)}>
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
                 style={{ background: `${CHAIN_COLORS[toChain] || '#666'}30` }}>
                 {chainIcon(toChain) && <img src={chainIcon(toChain)} alt="" className="w-5 h-5 sm:w-6 sm:h-6" />}
               </div>
-              <select value={toChain} onChange={e => handleToChain(Number(e.target.value))}
-                className="bg-transparent text-white font-semibold text-sm sm:text-base outline-none cursor-pointer flex-1 min-w-0 truncate">
-                {filteredChains.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <div className="flex-1 min-w-0 truncate text-white font-semibold text-sm sm:text-base cursor-pointer flex items-center gap-1">
+                {chainName(toChain)}
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </div>
             </div>
+            {/* Searchable Dropdown */}
+            {showChainDropdown === 1 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1a28] border border-gray-700 rounded-xl z-50 overflow-hidden shadow-xl hidden sm:block">
+                <div className="p-2 border-b border-gray-700">
+                  <input 
+                    type="text" 
+                    placeholder="Search chain..." 
+                    value={chainSearch}
+                    onChange={e => setChainSearch(e.target.value)}
+                    className="w-full bg-[#0a0a0f] text-white px-3 py-2 rounded-lg text-base outline-none border border-gray-700 focus:border-telos-cyan"
+                  />
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  {searchedChains.map(c => (
+                    <div key={c.id} onClick={() => { handleToChain(c.id); setShowChainDropdown(null); setChainSearch(''); }}
+                      className={`flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-800 ${c.id === toChain ? 'bg-gray-800' : ''}`}>
+                      {chainIcon(c.id) && <img src={chainIcon(c.id)} alt="" className="w-5 h-5" />}
+                      <span className="text-white text-sm">{c.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -259,7 +439,7 @@ export function BridgeForm() {
         <div className="border-t border-white/[0.03]"></div>
 
         {/* Amount input */}
-        <div className="bg-[#1a1a28] rounded-xl p-5 space-y-3 focus-within:ring-1 focus-within:ring-telos-cyan/30 transition-all duration-200">
+        <div className="bg-[#1a1a28] rounded-xl p-3 sm:p-4 space-y-2 focus-within:ring-1 focus-within:ring-telos-cyan/30 transition-all duration-200">
           <div className="flex items-center justify-between">
             <input type="number" inputMode="decimal" placeholder="0.00" value={amount}
               onChange={e => setAmount(e.target.value)}
@@ -267,13 +447,36 @@ export function BridgeForm() {
             <div className="flex items-center gap-2.5 bg-gradient-to-br from-[#252535] to-[#1e1e2e] border border-gray-700/50 rounded-xl px-4 py-3 ml-4 relative">
               {TOKEN_LOGOS[token] && <img src={TOKEN_LOGOS[token]} alt="" className="w-6 h-6 rounded-full" />}
               {tokenList.length > 1 ? (
-                <>
-                  <select value={token} onChange={e => { setToken(e.target.value); clearQuotes() }}
-                    className="bg-transparent text-base font-semibold outline-none cursor-pointer text-white appearance-none pr-5">
-                    {tokenList.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                  <svg className="w-3.5 h-3.5 text-gray-500 absolute right-3" viewBox="0 0 12 12" fill="none"><path d="M3 5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                </>
+                <div className="relative" onClick={() => setShowTokenDropdown(!showTokenDropdown)}>
+                  <div className="flex items-center gap-1 cursor-pointer">
+                    <span className="text-base font-semibold text-white">{token}</span>
+                    <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 12 12" fill="none"><path d="M3 5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  </div>
+                  {/* Token Dropdown with Search — desktop only, mobile uses bottom sheet */}
+                  {showTokenDropdown && (
+                    <div className="absolute top-full right-0 mt-2 w-40 bg-[#1a1a28] border border-gray-700 rounded-xl z-50 overflow-hidden shadow-xl hidden sm:block">
+                      <div className="p-2 border-b border-gray-700">
+                        <input 
+                          type="text" 
+                          placeholder="Search..." 
+                          value={tokenSearch}
+                          onChange={e => setTokenSearch(e.target.value)}
+                          className="w-full bg-[#0a0a0f] text-white px-2 py-1.5 rounded-lg text-base outline-none border border-gray-700 focus:border-telos-cyan"
+                          onClick={e => e.stopPropagation()}
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {searchedTokens.map(t => (
+                          <div key={t} onClick={() => { setToken(t); clearQuotes(); setShowTokenDropdown(false); setTokenSearch(''); }}
+                            className={`flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-800 ${t === token ? 'bg-gray-800' : ''}`}>
+                            {TOKEN_LOGOS[t] && <img src={TOKEN_LOGOS[t]} alt="" className="w-5 h-5 rounded-full" />}
+                            <span className="text-white text-sm">{t}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <span className="text-base font-semibold text-white">{token}</span>
               )}
@@ -296,59 +499,47 @@ export function BridgeForm() {
           )}
         </div>
 
-        {/* You receive */}
+        {/* Transaction summary */}
         {(hasQuote || quoting) && (
-          <div className="bg-gradient-to-br from-telos-cyan/[0.02] via-[#1a1a28] to-emerald-500/[0.01] rounded-xl p-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">You receive</p>
-            <div className="flex items-center justify-between">
-              {quoting ? (
-                <div className="skeleton h-10 w-40" />
-              ) : (
-                <span className="text-xl sm:text-3xl font-light text-telos-cyan tabular-nums">
-                  {v2Quote ? v2Quote.amountReceivedFormatted : amount}
-                </span>
-              )}
-              <div className="flex items-center gap-2 text-xs sm:text-base text-gray-400 font-medium">
-                {TOKEN_LOGOS[token] && <img src={TOKEN_LOGOS[token]} alt="" className="w-5 h-5 rounded-full" />}
-                {token} on {chainName(toChain)}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Slippage */}
-        {showSettings && (
-          <div className="bg-[#0e0e18] rounded-xl p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider">Slippage</p>
-              <span className="text-[10px] text-telos-cyan">{slippage}%</span>
-            </div>
-            <div className="flex gap-2">
-              {[0.5, 1, 2, 3].map(s => (
-                <button key={s} onClick={() => setSlippage(s)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    slippage === s
-                      ? 'bg-telos-cyan/15 text-telos-cyan border border-telos-cyan/30'
-                      : 'text-gray-500 border border-transparent hover:text-gray-300'}`}>
-                  {s}%
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Route details */}
-        {hasQuote && (
-          <div className="space-y-1.5 text-xs text-gray-500 px-3 py-3 border-t border-white/[0.03]">
-            <div className="flex justify-between">
-              <span>Via</span>
-              <span className="text-telos-cyan font-medium">
-                ⚡ {(isOft || isMst) ? 'LayerZero OFT V1' : OFT_V2_TOKENS[token]?.isStargate ? 'Stargate (LayerZero V2)' : 'LayerZero OFT V2'}
+          <div className="bg-[#111118] rounded-2xl overflow-hidden">
+            {/* Row 1: protocol + time */}
+            <div className="flex items-center justify-between px-4 pt-3 pb-2">
+              <span className="inline-flex items-center gap-1.5 bg-[#1e1e28] rounded-full px-2.5 py-1 text-xs text-gray-300 font-medium">
+                <img
+                  src={(isOft || isMst) ? '/telos-bridge-lifi/lz-logo.png' : '/telos-bridge-lifi/stargate-logo.png'}
+                  alt="" className="w-3.5 h-3.5 rounded-full" />
+                {(isOft || isMst) ? 'LayerZero' : 'Stargate'}
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                ~2m
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               </span>
             </div>
-            <div className="flex justify-between"><span>Rate</span><span className="text-gray-300">{OFT_V2_TOKENS[token]?.isStargate ? '~1:1 (Stargate fee applied)' : '1:1 — no slippage'}</span></div>
-            <div className="flex justify-between"><span>Fee</span><span className="text-gray-300 font-mono">{feeDisplay}</span></div>
-            <div className="flex justify-between"><span>Time</span><span className="text-gray-300">~2 min</span></div>
+
+            {/* Row 2: amount + logos */}
+            <div className="flex items-center gap-3 px-4 pb-3 border-b border-white/[0.05]">
+              <div className="relative shrink-0">
+                {TOKEN_LOGOS[token]
+                  ? <img src={TOKEN_LOGOS[token]} alt="" className="w-11 h-11 rounded-full" />
+                  : <div className="w-11 h-11 rounded-full bg-gray-700" />}
+                {chainIcon(toChain) && (
+                  <img src={chainIcon(toChain)} alt="" className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-[#111118]" />
+                )}
+              </div>
+              <div>
+                {quoting
+                  ? <div className="h-8 w-28 bg-gray-800 rounded-lg animate-pulse" />
+                  : <p className="text-white font-bold text-2xl leading-none">
+                      {v2Quote ? v2Quote.amountReceivedFormatted : amount} {token}
+                    </p>}
+              </div>
+            </div>
+
+            {/* Row 3: fee only */}
+            <div className="flex items-center gap-2 px-4 py-2.5">
+              {chainIcon(fromChain) && <img src={chainIcon(fromChain)} alt="" className="w-4 h-4 rounded-full" />}
+              <span className="text-xs text-red-300 font-medium">{feeDisplay || '…'}</span>
+            </div>
           </div>
         )}
 
@@ -378,9 +569,10 @@ export function BridgeForm() {
 
         {/* CTA */}
         {!address ? (
-          <div className="w-full py-5 rounded-xl font-semibold text-center text-gray-500 bg-[#1a1a28] border border-gray-800/50 text-lg">
-            Connect wallet to bridge
-          </div>
+          <button onClick={openConnectModal}
+            className="w-full py-5 rounded-2xl font-semibold text-lg bg-gradient-to-r from-telos-cyan via-telos-blue to-telos-purple text-white hover:opacity-90 hover:shadow-xl hover:shadow-telos-cyan/20 transition-all duration-200 shadow-lg shadow-telos-cyan/10 cursor-pointer">
+            Connect Wallet to Bridge
+          </button>
         ) : (
           <button onClick={hasQuote ? handleBridge : doQuote}
             disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || fromChain === toChain || (!isOft && !isMst && !isV2) || insufficientBalance}

@@ -70,15 +70,18 @@ const DEFAULT_ADAPTER_PARAMS = '0x0001000000000000000000000000000000000000000000
 // Fallback LZ fees by destination (tested values + buffer)
 // Real: Base ~11 TLOS, ETH ~208 TLOS. Add 50% buffer, excess refunded.
 const FALLBACK_FEES: Record<number, bigint> = {
-  184: parseEther('20'),   // Base
-  110: parseEther('20'),   // Arbitrum
-  10:  parseEther('20'),   // Optimism
-  102: parseEther('30'),   // BSC
-  109: parseEther('30'),   // Polygon
-  106: parseEther('30'),   // Avalanche
-  101: parseEther('300'),  // Ethereum (expensive)
+  // Real on-chain sendFrom values (Base scan Feb 2026): 0.000233–0.001256 ETH
+  // Using 199 (→Telos) as the key since that's the dstChainId when bridging TO Telos
+  199: parseEther('0.0015'),  // → Telos (padded ~20% above observed max 0.001256)
+  184: parseEther('0.0013'),  // Base → anywhere
+  110: parseEther('0.0002'),  // Arbitrum (L2, very cheap, observed 0.000123)
+  10:  parseEther('0.0002'),  // Optimism
+  102: parseEther('0.002'),   // BSC
+  109: parseEther('0.01'),    // Polygon (in MATIC)
+  106: parseEther('0.005'),   // Avalanche (in AVAX)
+  101: parseEther('0.0005'),  // Ethereum (observed 0.000447)
 }
-const DEFAULT_FALLBACK_FEE = parseEther('50')
+const DEFAULT_FALLBACK_FEE = parseEther('0.001')
 
 function addressToBytes32(addr: Address): Hex {
   return ('0x' + addr.slice(2).toLowerCase().padStart(64, '0')) as Hex
