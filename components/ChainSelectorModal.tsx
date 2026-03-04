@@ -15,6 +15,7 @@ interface ChainSelectorModalProps {
   chains: Chain[]
   onChainChange: (chainId: number) => void
   color?: string
+  className?: string
 }
 
 const CHAIN_COLORS: Record<number, string> = {
@@ -27,7 +28,8 @@ export function ChainSelectorModal({
   selectedChainId, 
   chains, 
   onChainChange,
-  color 
+  color,
+  className = '',
 }: ChainSelectorModalProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -50,7 +52,7 @@ export function ChainSelectorModal({
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-3 sm:p-4 hover:bg-[#1e1e30] hover:ring-1 hover:ring-gray-600/20 transition-all duration-200 group text-left"
+        className={`flex-1 min-w-0 bg-[#1a1a28] rounded-xl p-3 sm:p-4 hover:bg-[#1e1e30] hover:ring-1 hover:ring-gray-600/20 transition-all duration-200 group text-left ${className}`}
       >
         <p className="text-xs text-gray-500 uppercase tracking-wider mb-2 group-hover:text-gray-400 transition-colors">
           {label}
@@ -90,10 +92,10 @@ export function ChainSelectorModal({
 
       {/* Modal */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-[#12121a] border-0 sm:border border-gray-800/50 rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full sm:max-w-md max-h-[85vh] sm:max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setIsOpen(false)}>
+          <div className="bg-[#12121a] border-0 sm:border border-gray-800/50 rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 pt-5 sm:pt-6 w-full sm:max-w-md max-h-[80vh] sm:max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
               <h3 className="text-xl font-bold text-white">Select {label}</h3>
               <button 
                 onClick={() => setIsOpen(false)}
@@ -127,7 +129,7 @@ export function ChainSelectorModal({
             </div>
 
             {/* Chain Grid */}
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-auto relative -mx-1 px-1" style={{ WebkitOverflowScrolling: 'touch' as any }}>
               {filteredChains.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="w-12 h-12 bg-gray-800/50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -140,7 +142,7 @@ export function ChainSelectorModal({
                   <p className="text-sm text-gray-600">Try adjusting your search</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-2 sm:gap-3">
+                <div className="grid grid-cols-1 gap-1.5 sm:gap-3 pb-2">
                   {filteredChains.map(chain => {
                     const isSelected = chain.id === selectedChainId
                     const chainBrandColor = CHAIN_COLORS[chain.id] || '#666'
@@ -149,7 +151,7 @@ export function ChainSelectorModal({
                       <button
                         key={chain.id}
                         onClick={() => handleChainSelect(chain.id)}
-                        className={`p-4 sm:p-4 rounded-xl border transition-all duration-200 text-left group active:scale-98 ${
+                        className={`p-3 sm:p-4 rounded-xl border transition-all duration-200 text-left group active:scale-98 ${
                           isSelected 
                             ? 'bg-telos-cyan/10 border-telos-cyan/50 ring-2 ring-telos-cyan/30' 
                             : 'bg-[#1a1a28] border-gray-700/30 hover:border-gray-600/50 hover:bg-[#1e1e30] active:bg-[#1e1e30]'
@@ -194,10 +196,13 @@ export function ChainSelectorModal({
               )}
             </div>
 
+            {/* Scroll fade hint */}
+            <div className="h-6 -mt-6 relative z-10 bg-gradient-to-t from-[#12121a] to-transparent pointer-events-none" />
+
             {/* Footer */}
-            <div className="mt-6 pt-4 border-t border-gray-700/50">
+            <div className="mt-1 sm:mt-3 pt-3 sm:pt-4 border-t border-gray-700/50">
               <p className="text-xs text-gray-500 text-center">
-                {filteredChains.length} chain{filteredChains.length !== 1 ? 's' : ''} available
+                {filteredChains.length} chain{filteredChains.length !== 1 ? 's' : ''} available · scroll for more
               </p>
             </div>
           </div>

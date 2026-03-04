@@ -112,10 +112,10 @@ export function TokenSelectorModal({ selectedToken, tokens, onTokenChange }: Tok
 
       {/* Modal */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-[#12121a] border-0 sm:border border-gray-800/50 rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full sm:max-w-md max-h-[85vh] sm:max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setIsOpen(false)}>
+          <div className="bg-[#12121a] border-0 sm:border border-gray-800/50 rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full sm:max-w-md max-h-[80vh] sm:max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
               <h3 className="text-xl font-bold text-white">Select Token</h3>
               <button 
                 onClick={() => setIsOpen(false)}
@@ -232,7 +232,7 @@ export function TokenSelectorModal({ selectedToken, tokens, onTokenChange }: Tok
             </div>
 
             {/* Footer */}
-            <div className="mt-6 pt-4 border-t border-gray-700/50">
+            <div className="mt-3 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-700/50">
               <p className="text-xs text-gray-500 text-center">
                 {filteredTokens.length} token{filteredTokens.length !== 1 ? 's' : ''} available on this route
               </p>
