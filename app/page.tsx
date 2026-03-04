@@ -15,7 +15,7 @@ export default function Home() {
 
           <div className="relative z-10">
             <Header />
-            <div className="max-w-[560px] mx-auto px-4 sm:px-6 pt-4 sm:pt-8 pb-safe pb-20 sm:pb-24 relative z-10">
+            <div className="max-w-[560px] mx-auto px-5 sm:px-6 pt-4 sm:pt-8 pb-safe pb-20 sm:pb-24 relative z-10">
               <BridgeForm />
             </div>
           </div>

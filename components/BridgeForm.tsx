@@ -2,7 +2,21 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAccount, useBalance, useSwitchChain, useWalletClient, usePublicClient } from 'wagmi'
+import { createPublicClient, http } from 'viem'
+import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { SUPPORTED_CHAINS, CHAIN_MAP } from '@/lib/chains'
+
+// RPC endpoints for fallback public clients (no wallet needed)
+const CHAIN_RPCS: Record<number, string> = {
+  40: 'https://rpc.telos.net/evm',
+  1: 'https://eth.llamarpc.com',
+  8453: 'https://mainnet.base.org',
+  56: 'https://bsc-dataseed.binance.org',
+  42161: 'https://arb1.arbitrum.io/rpc',
+  137: 'https://polygon-rpc.com',
+  43114: 'https://api.avax.network/ext/bc/C/rpc',
+  10: 'https://mainnet.optimism.io',
+}
 import { isTlosOftRoute, quoteOftSend, executeOftSend, isMstOftRoute, quoteMstSend, executeMstSend, getMstSupportedChains, TLOS_OFT_ADDRESSES, MST_OFT_ADDRESSES, type OftQuoteResult } from '@/lib/oft'
 import { isOftV2Route, getAvailableOftV2Tokens, quoteOftV2Send, executeOftV2Send, OFT_V2_TOKENS, type OftV2QuoteResult } from '@/lib/oft-v2'
 import { AmountInput } from './AmountInput'
@@ -29,6 +43,7 @@ const TOKEN_LOGOS: Record<string, string> = {
 
 export function BridgeForm() {
   const { address, chainId: walletChainId } = useAccount()
+  const { openConnectModal } = useConnectModal()
   const { switchChainAsync } = useSwitchChain()
   const { data: walletClient } = useWalletClient()
   const { reduceMotion } = useAnimation()
@@ -50,7 +65,11 @@ export function BridgeForm() {
   const [currentTransactionId, setCurrentTransactionId] = useState<string | undefined>()
   const [showRecentTransactions, setShowRecentTransactions] = useState(false)
   const [showSuccessCelebration, setShowSuccessCelebration] = useState(false)
-  const publicClient = usePublicClient({ chainId: fromChain })
+  const wagmiPublicClient = usePublicClient({ chainId: fromChain })
+  // Fallback: create a direct viem client if wagmi hasn't hydrated yet
+  const publicClient = wagmiPublicClient ?? (CHAIN_RPCS[fromChain] ? createPublicClient({
+    transport: http(CHAIN_RPCS[fromChain]),
+  }) : undefined)
   const quoteTimeout = useRef<NodeJS.Timeout | null>(null)
 
   const { data: nativeBalance } = useBalance({ address, chainId: fromChain })
@@ -310,7 +329,7 @@ export function BridgeForm() {
       reduceMotion ? '' : 'animate-in slide-in-from-bottom-4 fade-in duration-700 delay-300'
     }`}>
       {/* Toolbar icons above the bridge frame */}
-      <div className={`flex justify-end gap-3 sm:gap-3 pr-1 ${
+      <div className={`flex justify-end gap-3 sm:gap-3 ${
         reduceMotion ? '' : 'animate-in slide-in-from-right-3 fade-in duration-500 delay-500'
       }`}>
         <button 
@@ -331,32 +350,39 @@ export function BridgeForm() {
         <div className="bg-[#12121a]/80 backdrop-blur-xl rounded-2xl p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5 shadow-2xl shadow-black/40 transition-all duration-300 hover:shadow-3xl hover:shadow-telos-cyan/5">
 
         {/* Chain selector row */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-3">
-          <ChainSelectorModal
-            label="From"
-            selectedChainId={fromChain}
-            chains={filteredChains}
-            onChainChange={handleFromChain}
-          />
+        <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center gap-0 sm:gap-3">
+          {/* Shared background wrapper on mobile to eliminate seam line */}
+          <div className="flex flex-col sm:contents bg-[#1a1a28] rounded-xl sm:bg-transparent sm:rounded-none overflow-hidden">
+            <ChainSelectorModal
+              label="From"
+              selectedChainId={fromChain}
+              chains={filteredChains}
+              onChainChange={handleFromChain}
+              className="sm:flex-1 rounded-none sm:rounded-xl"
+            />
 
+            {/* Subtle divider line on mobile */}
+            <div className="h-px bg-gray-700/20 sm:hidden" />
+
+            <ChainSelectorModal
+              label="To"
+              selectedChainId={toChain}
+              chains={filteredChains}
+              onChainChange={handleToChain}
+              className="sm:flex-1 rounded-none sm:rounded-xl"
+            />
+          </div>
+
+          {/* Swap button — overlaps the seam on mobile, inline on desktop */}
           <button 
             onClick={swap}
-            className="w-12 h-12 sm:w-10 sm:h-10 rounded-full bg-[#1a1a28] border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 hover:rotate-180 duration-300 text-gray-400 hover:text-telos-cyan shrink-0 group active:scale-95 self-center sm:self-auto touch-manipulation"
+            className="absolute sm:relative left-1/2 sm:left-auto top-1/2 sm:top-auto -translate-x-1/2 sm:translate-x-0 -translate-y-1/2 sm:translate-y-0 z-20 w-10 h-10 sm:w-10 sm:h-10 rounded-full bg-[#1a1a28] border-2 sm:border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 hover:rotate-180 duration-300 text-gray-400 hover:text-telos-cyan shrink-0 group active:scale-95 touch-manipulation shadow-lg shadow-black/50 sm:shadow-none"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="group-hover:scale-110 transition-transform">
-              <path d="M10 2L13 5L10 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M3 5H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M6 14L3 11L6 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M13 11H3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="group-hover:scale-110 transition-transform rotate-90 sm:rotate-0">
+              <path d="M7 10L12 5L17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M7 14L12 19L17 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
-
-          <ChainSelectorModal
-            label="To"
-            selectedChainId={toChain}
-            chains={filteredChains}
-            onChainChange={handleToChain}
-          />
         </div>
 
         {/* Subtle separator */}
@@ -392,9 +418,9 @@ export function BridgeForm() {
             amountReceived={v2Quote ? v2Quote.amountReceivedFormatted : amount}
             isStargate={OFT_V2_TOKENS[token]?.isStargate}
             nativeFee={oftQuote 
-              ? `~${parseFloat(oftQuote.nativeFeeFormatted).toFixed(0)}` 
+              ? `~${parseFloat(oftQuote.nativeFeeFormatted) >= 1 ? parseFloat(oftQuote.nativeFeeFormatted).toFixed(0) : parseFloat(oftQuote.nativeFeeFormatted).toFixed(4)}` 
               : v2Quote 
-                ? `~${parseFloat(v2Quote.nativeFeeFormatted).toFixed(4)}`
+                ? `~${parseFloat(v2Quote.nativeFeeFormatted) >= 1 ? parseFloat(v2Quote.nativeFeeFormatted).toFixed(0) : parseFloat(v2Quote.nativeFeeFormatted).toFixed(4)}`
                 : undefined
             }
             feeCurrency={CHAIN_MAP.get(fromChain)?.nativeCurrency || 'TLOS'}
@@ -459,9 +485,12 @@ export function BridgeForm() {
 
         {/* CTA */}
         {!address ? (
-          <div className="w-full py-5 rounded-xl font-semibold text-center text-gray-500 bg-[#1a1a28] border border-gray-800/50 text-lg">
-            Connect wallet to bridge
-          </div>
+          <button 
+            onClick={openConnectModal}
+            className="w-full py-4 sm:py-5 rounded-2xl font-semibold text-base sm:text-lg bg-gradient-to-r from-telos-cyan via-telos-blue to-telos-purple text-white hover:opacity-90 hover:shadow-xl hover:shadow-telos-cyan/20 active:scale-98 transition-all duration-200 shadow-lg shadow-telos-cyan/10 touch-manipulation"
+          >
+            Connect Wallet
+          </button>
         ) : (
           <button onClick={hasQuote ? handleBridge : doQuote}
             disabled={!amount || parseFloat(amount) <= 0 || quoting || bridging || fromChain === toChain || (!isOft && !isMst && !isV2) || insufficientBalance}
@@ -471,7 +500,8 @@ export function BridgeForm() {
               {insufficientBalance ? 'Insufficient balance' : 
                quoting ? 'Getting quote...' : 
                bridging ? 'Bridging...' : 
-               hasQuote ? `⚡ Bridge ${token}` : 'Get Quote'}
+               hasQuote ? `⚡ Bridge ${token}` : 
+               (!amount || parseFloat(amount) <= 0) ? 'Enter an amount' : 'Get Quote'}
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-telos-cyan/20 via-white/10 to-telos-cyan/20 opacity-0 group-hover:opacity-100 group-hover:animate-pulse transition-opacity duration-200"></div>
           </button>

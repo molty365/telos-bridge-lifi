@@ -397,16 +397,31 @@ export async function quoteOftV2Send(
       } catch { /* fall through to quoteSend */ }
     }
 
-    const result = await publicClient.readContract({
-      address: sourceAddress,
+    // Use raw eth_call because some OFT contracts return only MessagingFee (2 words)
+    // while others return MessagingFee + OFTReceipt (4 words)
+    const calldata = encodeFunctionData({
       abi: OFT_V2_ABI,
       functionName: 'quoteSend',
       args: [sendParam, false],
-    }) as any
+    })
 
-    const nativeFee = result[0].nativeFee || result.msgFee?.nativeFee
-    if (!config.isStargate) {
-      amountReceived = result[1]?.amountReceivedLD || result.oftReceipt?.amountReceivedLD || amountLD
+    const rawResult = await publicClient.call({
+      to: sourceAddress,
+      data: calldata,
+    })
+
+    if (!rawResult.data || rawResult.data.length < 130) {
+      throw new Error('Invalid quoteSend response')
+    }
+
+    // Parse raw response — first 2 words are always nativeFee and lzTokenFee
+    const data = rawResult.data.slice(2) // remove 0x
+    const nativeFee = BigInt('0x' + data.slice(0, 64))
+
+    // If response has 4+ words, words 3-4 are amountSentLD and amountReceivedLD
+    if (!config.isStargate && data.length >= 256) {
+      const receivedLD = BigInt('0x' + data.slice(192, 256))
+      if (receivedLD > 0n) amountReceived = receivedLD
     }
 
     return {
@@ -417,9 +432,18 @@ export async function quoteOftV2Send(
       feeEstimated: false,
     }
   } catch (e) {
-    // Fallback fees — use source chain native currency amount
-    const fallback = toChain === 1 || fromChain === 1 ? 300n : 20n
-    const nativeFee = fallback * 10n ** 18n
+    // Direction-aware fallback fees in source chain native currency
+    const FALLBACK_FEES: Record<number, bigint> = {
+      40: parseUnits('20', 18),       // from Telos (TLOS)
+      1: parseUnits('0.005', 18),     // from Ethereum (ETH)
+      8453: parseUnits('0.001', 18),  // from Base (ETH)
+      42161: parseUnits('0.001', 18), // from Arbitrum (ETH)
+      10: parseUnits('0.001', 18),    // from Optimism (ETH)
+      56: parseUnits('0.01', 18),     // from BSC (BNB)
+      137: parseUnits('0.5', 18),     // from Polygon (MATIC)
+      43114: parseUnits('0.1', 18),   // from Avalanche (AVAX)
+    }
+    const nativeFee = FALLBACK_FEES[fromChain] || parseUnits('0.01', 18)
     return {
       nativeFee,
       nativeFeeFormatted: formatUnits(nativeFee, 18),

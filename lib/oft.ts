@@ -2,7 +2,27 @@
 // NativeOFT pattern: msg.value = amount + LZ fee (no ERC20 approval needed)
 // Tested: 1 TLOS Telos→Base successful (tx 0x7da5920b...)
 
-import { parseEther, formatEther, type Address, type Hex } from 'viem'
+import { parseEther, formatEther, type Address, type Hex, getAddress } from 'viem'
+
+// LayerZero V1 Endpoint (same address on all EVM chains)
+const LZ_ENDPOINT: Address = '0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675'
+
+const LZ_ENDPOINT_ABI = [{
+  name: 'estimateFees',
+  type: 'function',
+  stateMutability: 'view',
+  inputs: [
+    { name: '_dstChainId', type: 'uint16' },
+    { name: '_userApplication', type: 'address' },
+    { name: '_payload', type: 'bytes' },
+    { name: '_payInZRO', type: 'bool' },
+    { name: '_adapterParams', type: 'bytes' },
+  ],
+  outputs: [
+    { name: 'nativeFee', type: 'uint256' },
+    { name: 'zroFee', type: 'uint256' },
+  ],
+}] as const
 
 // TLOS OFT contract addresses (official from Telos Foundation)
 export const TLOS_OFT_ADDRESSES: Record<number, Address> = {
@@ -69,16 +89,29 @@ const DEFAULT_ADAPTER_PARAMS = '0x0001000000000000000000000000000000000000000000
 
 // Fallback LZ fees by destination (tested values + buffer)
 // Real: Base ~11 TLOS, ETH ~208 TLOS. Add 50% buffer, excess refunded.
-const FALLBACK_FEES: Record<number, bigint> = {
-  184: parseEther('20'),   // Base
-  110: parseEther('20'),   // Arbitrum
-  10:  parseEther('20'),   // Optimism
-  102: parseEther('30'),   // BSC
-  109: parseEther('30'),   // Polygon
-  106: parseEther('30'),   // Avalanche
-  101: parseEther('300'),  // Ethereum (expensive)
+// Fallback LZ fees indexed by destination LZ chain ID
+// These are paid in SOURCE chain native token (ETH from Ethereum, TLOS from Telos, etc.)
+// Values are conservative estimates — excess is refunded by LayerZero
+const FALLBACK_FEES_FROM_TELOS: Record<number, bigint> = {
+  184: parseEther('20'),   // → Base (in TLOS)
+  110: parseEther('20'),   // → Arbitrum
+  10:  parseEther('20'),   // → Optimism
+  102: parseEther('30'),   // → BSC
+  109: parseEther('30'),   // → Polygon
+  106: parseEther('30'),   // → Avalanche
+  101: parseEther('300'),  // → Ethereum (expensive)
 }
-const DEFAULT_FALLBACK_FEE = parseEther('50')
+// When bridging FROM other chains TO Telos, fee is in that chain's native token
+const FALLBACK_FEES_TO_TELOS: Record<number, bigint> = {
+  1:     parseEther('0.01'),   // from Ethereum (ETH)
+  8453:  parseEther('0.001'),  // from Base (ETH)
+  42161: parseEther('0.001'),  // from Arbitrum (ETH)
+  10:    parseEther('0.001'),  // from Optimism (ETH)
+  56:    parseEther('0.01'),   // from BSC (BNB)
+  137:   parseEther('0.5'),    // from Polygon (MATIC)
+  43114: parseEther('0.1'),    // from Avalanche (AVAX)
+}
+const DEFAULT_FALLBACK_FEE = parseEther('0.01')
 
 function addressToBytes32(addr: Address): Hex {
   return ('0x' + addr.slice(2).toLowerCase().padStart(64, '0')) as Hex
@@ -126,6 +159,7 @@ export async function quoteOftSend(
   let nativeFee: bigint
   let feeEstimated = false
 
+  // Try 1: OFT contract's estimateSendFee
   try {
     const result = await publicClient.readContract({
       address: oftAddress,
@@ -135,9 +169,20 @@ export async function quoteOftSend(
     }) as [bigint, bigint]
     nativeFee = result[0]
   } catch {
-    // estimateSendFee reverts on Telos RPC (oracle issue) but actual sends work
-    nativeFee = FALLBACK_FEES[dstChainId] || DEFAULT_FALLBACK_FEE
-    feeEstimated = true
+    // Try 2: Call LZ Endpoint directly (works even when OFT wrapper reverts)
+    try {
+      const endpointResult = await publicClient.readContract({
+        address: LZ_ENDPOINT,
+        abi: LZ_ENDPOINT_ABI,
+        functionName: 'estimateFees',
+        args: [dstChainId, oftAddress, '0x' as Hex, false, DEFAULT_ADAPTER_PARAMS],
+      }) as [bigint, bigint]
+      nativeFee = endpointResult[0]
+    } catch {
+      // Try 3: Hardcoded fallback (direction-aware)
+      nativeFee = ((fromChain === 40) ? FALLBACK_FEES_FROM_TELOS[dstChainId] : FALLBACK_FEES_TO_TELOS[fromChain]) || DEFAULT_FALLBACK_FEE
+      feeEstimated = true
+    }
   }
 
   return {
@@ -220,6 +265,7 @@ export async function quoteMstSend(
   let nativeFee: bigint
   let feeEstimated = false
 
+  // Try 1: OFT contract's estimateSendFee
   try {
     const result = await publicClient.readContract({
       address: oftAddress,
@@ -229,8 +275,19 @@ export async function quoteMstSend(
     }) as [bigint, bigint]
     nativeFee = result[0]
   } catch {
-    nativeFee = FALLBACK_FEES[dstChainId] || DEFAULT_FALLBACK_FEE
-    feeEstimated = true
+    // Try 2: LZ Endpoint direct
+    try {
+      const endpointResult = await publicClient.readContract({
+        address: LZ_ENDPOINT,
+        abi: LZ_ENDPOINT_ABI,
+        functionName: 'estimateFees',
+        args: [dstChainId, oftAddress, '0x' as Hex, false, DEFAULT_ADAPTER_PARAMS],
+      }) as [bigint, bigint]
+      nativeFee = endpointResult[0]
+    } catch {
+      nativeFee = ((fromChain === 40) ? FALLBACK_FEES_FROM_TELOS[dstChainId] : FALLBACK_FEES_TO_TELOS[fromChain]) || DEFAULT_FALLBACK_FEE
+      feeEstimated = true
+    }
   }
 
   return {
@@ -294,7 +351,7 @@ export async function executeMstSend(
     }) as [bigint, bigint]
     nativeFee = result[0]
   } catch {
-    nativeFee = FALLBACK_FEES[dstChainId] || DEFAULT_FALLBACK_FEE
+    nativeFee = ((fromChain === 40) ? FALLBACK_FEES_FROM_TELOS[dstChainId] : FALLBACK_FEES_TO_TELOS[fromChain]) || DEFAULT_FALLBACK_FEE
     onStatus('Using estimated fee (excess will be refunded)...')
   }
 
@@ -359,7 +416,7 @@ export async function executeOftSend(
     }) as [bigint, bigint]
     nativeFee = result[0]
   } catch {
-    nativeFee = FALLBACK_FEES[dstChainId] || DEFAULT_FALLBACK_FEE
+    nativeFee = ((fromChain === 40) ? FALLBACK_FEES_FROM_TELOS[dstChainId] : FALLBACK_FEES_TO_TELOS[fromChain]) || DEFAULT_FALLBACK_FEE
     onStatus('Using estimated fee (excess will be refunded)...')
   }
 
