@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { TOKEN_ICONS } from '@/lib/constants'
 
 interface TokenSelectorModalProps {
   selectedToken: string
@@ -8,14 +9,7 @@ interface TokenSelectorModalProps {
   onTokenChange: (token: string) => void
 }
 
-const TOKEN_LOGOS: Record<string, string> = {
-  TLOS: '/telos-bridge-lifi/tokens/TLOS.svg',
-  USDC: '/telos-bridge-lifi/tokens/USDC.png',
-  USDT: '/telos-bridge-lifi/tokens/USDT.png',
-  ETH: '/telos-bridge-lifi/tokens/ETH.png',
-  WBTC: '/telos-bridge-lifi/tokens/WBTC.png',
-  MST: '/telos-bridge-lifi/tokens/MST.svg',
-}
+const TOKEN_LOGOS = TOKEN_ICONS
 
 const TOKEN_INFO: Record<string, { name: string; description: string; category: string }> = {
   TLOS: { name: 'Telos', description: 'Native token of Telos EVM', category: 'Native' },

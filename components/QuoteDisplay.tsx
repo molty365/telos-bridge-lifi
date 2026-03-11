@@ -3,6 +3,7 @@
 import { LoadingSpinner } from './LoadingSpinner'
 import { useCountUp } from '@/hooks/useCountUp'
 import { useAnimation } from './AnimationProvider'
+import { TOKEN_ICONS } from '@/lib/constants'
 import { useEffect, useState } from 'react'
 
 interface QuoteDisplayProps {
@@ -41,14 +42,7 @@ export function QuoteDisplay({
     preserveValue: false
   })
 
-  const TOKEN_LOGOS: Record<string, string> = {
-    TLOS: '/telos-bridge-lifi/tokens/TLOS.svg',
-    USDC: '/telos-bridge-lifi/tokens/USDC.png',
-    USDT: '/telos-bridge-lifi/tokens/USDT.png',
-    ETH: '/telos-bridge-lifi/tokens/ETH.png',
-    WBTC: '/telos-bridge-lifi/tokens/WBTC.png',
-    MST: '/telos-bridge-lifi/tokens/MST.svg',
-  }
+  const TOKEN_LOGOS = TOKEN_ICONS
 
   useEffect(() => {
     setIsVisible(true)

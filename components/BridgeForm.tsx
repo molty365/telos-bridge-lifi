@@ -5,6 +5,7 @@ import { useAccount, useBalance, useSwitchChain, useWalletClient, usePublicClien
 import { createPublicClient, http } from 'viem'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { SUPPORTED_CHAINS, CHAIN_MAP } from '@/lib/chains'
+import { TOKEN_ICONS } from '@/lib/constants'
 
 // RPC endpoints for fallback public clients (no wallet needed)
 const CHAIN_RPCS: Record<number, string> = {
@@ -32,14 +33,7 @@ import { SuccessCelebration } from './SuccessCelebration'
 import { useAnimation } from './AnimationProvider'
 
 // Token logos for the "You receive" section
-const TOKEN_LOGOS: Record<string, string> = {
-  TLOS: '/telos-bridge-lifi/tokens/TLOS.svg',
-  USDC: '/telos-bridge-lifi/tokens/USDC.png',
-  USDT: '/telos-bridge-lifi/tokens/USDT.png',
-  ETH: '/telos-bridge-lifi/tokens/ETH.png',
-  WBTC: '/telos-bridge-lifi/tokens/WBTC.png',
-  MST: '/telos-bridge-lifi/tokens/MST.svg',
-}
+const TOKEN_LOGOS = TOKEN_ICONS
 
 export function BridgeForm() {
   const { address, chainId: walletChainId } = useAccount()

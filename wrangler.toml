@@ -1,0 +1,7 @@
+name = "telos-bridge-lifi"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "./dist"
+
+[branches]
+preview = "design-sprint"
+production = ["main"]
