@@ -17,7 +17,7 @@ const TOKEN_INFO: Record<string, { name: string; description: string; category: 
   USDT: { name: 'Tether USD', description: 'Stablecoin by Tether', category: 'Stablecoin' },
   ETH: { name: 'Ethereum', description: 'Native Ethereum token', category: 'Native' },
   WBTC: { name: 'Wrapped Bitcoin', description: 'Bitcoin on Ethereum', category: 'Wrapped' },
-  MST: { name: 'Monster Token', description: 'Gaming token on Telos', category: 'Gaming' },
+  MST: { name: 'Meridian MST', description: ' Meridian Star Token on Telos', category: 'Gaming' },
 }
 
 const TOKEN_COLORS: Record<string, string> = {
