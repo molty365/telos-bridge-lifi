@@ -57,6 +57,32 @@ function getTokenAddress(token: string, chainId: number): string | undefined {
   return undefined
 }
 
+// Canonical token addresses (for balance checking - not OFT adapters)
+const CANONICAL_TOKENS: Record<string, Record<number, string>> = {
+  WBTC: {
+    1: '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599',    // ETH
+    56: '0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c',    // BSC
+    43114: '0x50b7545627a5162f82a992ac33c563fe9fc55e3',   // AVAX
+    8453: '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599',   // Base (canonical WBTC)
+    10: '0x68f753fc59e716eb244e5a8f7c80b0457d4f5b8b',    // Optimism
+  },
+  ETH: {
+    8453: '0x4200000000000000000000000000000000000006',   // Base (WETH)
+    10: '0x4200000000000000000000000000000000000006',   // Optimism WETH
+    43114: '0x53f7c5869a4bfc7e2c5e8d4d5d3b8b3c5e8d4d', // AVAX (would be wrapped)
+  },
+}
+
+// Get canonical token address for balance checking
+function getCanonicalTokenAddress(token: string, chainId: number): string | undefined {
+  // If we have a canonical mapping, use that
+  if (CANONICAL_TOKENS[token]?.[chainId]) {
+    return CANONICAL_TOKENS[token][chainId]
+  }
+  // Otherwise fall back to OFT address
+  return getTokenAddress(token, chainId)
+}
+
 export function BridgeForm() {
   const { address, chainId: walletChainId } = useAccount()
   const { openConnectModal } = useConnectModal()
@@ -91,7 +117,7 @@ export function BridgeForm() {
   const { data: nativeBalance } = useBalance({ address, chainId: fromChain })
 
   // Get ERC20 token address for the selected token on fromChain
-  const tokenAddress = getTokenAddress(token, fromChain)
+  const tokenAddress = getCanonicalTokenAddress(token, fromChain)
 
   // Fetch ERC20 balance if token is not native TLOS
   const { data: erc20BalanceData } = useReadContract({
