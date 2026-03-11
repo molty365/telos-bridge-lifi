@@ -57,29 +57,66 @@ function getTokenAddress(token: string, chainId: number): string | undefined {
   return undefined
 }
 
-// Canonical token addresses (for balance checking - not OFT adapters)
+// Canonical token addresses (for balance checking - NOT OFT adapters/pools)
+// For Stargate tokens: use the underlying ERC20, not the Stargate pool
+// For WBTC: on ETH it's the canonical WBTC, on other chains the OFT IS the token
 const CANONICAL_TOKENS: Record<string, Record<number, string>> = {
+  USDC: {
+    40: '0xF1815bd50389c46847f0Bda824eC8da914045D14',   // Telos: Bridged USDC (Stargate)
+    1: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',    // ETH: USDC
+    8453: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913',  // Base: USDC
+    56: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',    // BSC: USDC
+    42161: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', // Arbitrum: USDC
+    137: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',   // Polygon: USDC
+    43114: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E', // Avalanche: USDC
+    10: '0x0b2c639c533813f4aa9d7837caf62653d097ff85',    // OP: USDC
+    534352: '0x06eFdBFf2a14a7c8E15944D1F4A48F9F95F663A4', // Scroll: USDC
+    5000: '0x09Bc4E0D10E52d373A6010e0e42ae39b59ac6320',   // Mantle: USDC
+    1329: '0x3894085Ef7Ff0f0aeDf52E2A2704928d1Ec074F1',   // Sei: USDC
+    100: '0xDDAfBB505ad214D7b80b1f830fcCc89B60fb7A83',    // Gnosis: USDC
+  },
+  USDT: {
+    40: '0x674843C06FF83502ddb4D37c2E09C01cdA38cbc8',   // Telos: USDT
+    1: '0xdac17f958d2ee523a2206206994597c13d831ec7',    // ETH: USDT
+    56: '0x55d398326f99059ff775485246999027b3197955',    // BSC: USDT
+    42161: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', // Arbitrum: USDT
+    137: '0xc2132d05d31c914a87c6611c10748aeb04b58e8f',   // Polygon: USDT
+    43114: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7', // Avalanche: USDT
+    10: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58',    // OP: USDT
+    5000: '0x201EBa5CC46D216Ce6DC03F6a759e8E766e956aE',   // Mantle: USDT
+  },
   WBTC: {
-    1: '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599',    // ETH
-    56: '0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c',    // BSC
-    43114: '0x50b7545627a5162f82a992ac33c563fe9fc55e3',   // AVAX
-    8453: '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599',   // Base (canonical WBTC)
-    10: '0x68f753fc59e716eb244e5a8f7c80b0457d4f5b8b',    // Optimism
+    40: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c',   // Telos: WBTC OFT (IS the token)
+    1: '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599',    // ETH: canonical WBTC (OFT is adapter)
+    56: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c',    // BSC: WBTC OFT (IS the token)
+    43114: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c', // AVAX: WBTC OFT (IS the token)
+    8453: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c',  // Base: WBTC OFT (IS the token)
+    10: '0x68f180fcCe6836688e9084f035309E29Bf0A2095',    // OP: canonical WBTC
   },
   ETH: {
-    8453: '0x4200000000000000000000000000000000000006',   // Base (WETH)
-    10: '0x4200000000000000000000000000000000000006',   // Optimism WETH
-    43114: '0x53f7c5869a4bfc7e2c5e8d4d5d3b8b3c5e8d4d', // AVAX (would be wrapped)
+    40: '0xBAb93B7ad7fE8692A878B95a8e689423437cc500',   // Telos: WETH underlying
+    // On ETH/Base/Arb/OP etc, ETH is the NATIVE token - use native balance, not ERC20
+    // Don't add entries here for chains where ETH is native
   },
 }
 
 // Get canonical token address for balance checking
 function getCanonicalTokenAddress(token: string, chainId: number): string | undefined {
-  // If we have a canonical mapping, use that
+  // TLOS is always native
+  if (token === 'TLOS') return undefined
+  
+  // ETH is native on most chains - only check ERC20 on Telos
+  if (token === 'ETH') {
+    if (chainId === 40) return CANONICAL_TOKENS['ETH']?.[40]
+    return undefined // Use native balance on other chains
+  }
+  
+  // Check canonical mapping first
   if (CANONICAL_TOKENS[token]?.[chainId]) {
     return CANONICAL_TOKENS[token][chainId]
   }
-  // Otherwise fall back to OFT address
+  
+  // Fall back to OFT address (for chains not in canonical map)
   return getTokenAddress(token, chainId)
 }
 
@@ -136,14 +173,27 @@ export function BridgeForm() {
   })
 
   // Combine native and ERC20 balance
+  // For TLOS: always use native balance
+  // For ETH on non-Telos chains: use native balance (ETH is native)
+  // For ERC20 tokens: use ERC20 balance
   let displayBalance = nativeBalance
-  if (token !== 'TLOS' && erc20BalanceData && erc20Decimals) {
+  const isNativeToken = token === 'TLOS' || (token === 'ETH' && fromChain !== 40)
+  
+  if (!isNativeToken && erc20BalanceData !== undefined && erc20Decimals !== undefined) {
+    const bal = BigInt(erc20BalanceData as any)
+    const dec = Number(erc20Decimals)
     displayBalance = {
       ...nativeBalance,
-      formatted: (Number(erc20BalanceData) / Math.pow(10, Number(erc20Decimals))).toString(),
-      value: erc20BalanceData,
-      decimals: Number(erc20Decimals),
+      formatted: (Number(bal) / Math.pow(10, dec)).toString(),
+      value: bal,
+      decimals: dec,
       symbol: token,
+    } as any
+  } else if (token === 'ETH' && fromChain !== 40 && nativeBalance) {
+    // ETH on non-Telos chains: show native balance with ETH symbol
+    displayBalance = {
+      ...nativeBalance,
+      symbol: 'ETH',
     } as any
   }
 
