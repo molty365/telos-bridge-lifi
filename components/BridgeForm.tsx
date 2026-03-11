@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useAccount, useBalance, useSwitchChain, useWalletClient, usePublicClient } from 'wagmi'
+import { useAccount, useBalance, useSwitchChain, useWalletClient, usePublicClient, useReadContract } from 'wagmi'
 import { createPublicClient, http } from 'viem'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { SUPPORTED_CHAINS, CHAIN_MAP } from '@/lib/chains'
@@ -34,6 +34,28 @@ import { useAnimation } from './AnimationProvider'
 
 // Token logos for the "You receive" section
 const TOKEN_LOGOS = TOKEN_ICONS
+
+// ERC20 ABI for balanceOf
+const ERC20_ABI = [
+  { name: 'balanceOf', type: 'function', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: 'balance', type: 'uint256' }] },
+  { name: 'decimals', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint8' }] },
+  { name: 'symbol', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'string' }] },
+]
+
+// Get token address on a given chain
+function getTokenAddress(token: string, chainId: number): string | undefined {
+  // TLOS is native
+  if (token === 'TLOS') return undefined
+  // MST OFT
+  if (token === 'MST' && MST_OFT_ADDRESSES[chainId]) return MST_OFT_ADDRESSES[chainId]
+  // V2 OFT tokens (Stargate or LZ)
+  const v2Config = OFT_V2_TOKENS[token]
+  if (v2Config) {
+    if (chainId === 40) return v2Config.address
+    return v2Config.peers[chainId]
+  }
+  return undefined
+}
 
 export function BridgeForm() {
   const { address, chainId: walletChainId } = useAccount()
@@ -68,12 +90,42 @@ export function BridgeForm() {
 
   const { data: nativeBalance } = useBalance({ address, chainId: fromChain })
 
+  // Get ERC20 token address for the selected token on fromChain
+  const tokenAddress = getTokenAddress(token, fromChain)
+
+  // Fetch ERC20 balance if token is not native TLOS
+  const { data: erc20BalanceData } = useReadContract({
+    address: tokenAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address && !!tokenAddress && token !== 'TLOS' }
+  })
+
+  const { data: erc20Decimals } = useReadContract({
+    address: tokenAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: 'decimals',
+    query: { enabled: !!tokenAddress && token !== 'TLOS' }
+  })
+
+  // Combine native and ERC20 balance
+  let displayBalance = nativeBalance
+  if (token !== 'TLOS' && erc20BalanceData && erc20Decimals) {
+    displayBalance = {
+      ...nativeBalance,
+      formatted: (Number(erc20BalanceData) / Math.pow(10, Number(erc20Decimals))).toString(),
+      value: erc20BalanceData,
+      decimals: Number(erc20Decimals),
+      symbol: token,
+    } as any
+  }
+
   const isOft = isTlosOftRoute(fromChain, toChain, token, token)
   const isMst = isMstOftRoute(fromChain, toChain, token, token)
   const isV2 = !isOft && !isMst && isOftV2Route(token, fromChain, toChain)
   const hasQuote = !!(oftQuote || v2Quote)
   const wrongNetwork = address && walletChainId !== fromChain
-  const displayBalance = nativeBalance // TODO: add ERC20 balance for WBTC/WETH
 
   const chainName = (id: number) => CHAIN_MAP.get(id)?.name || `Chain ${id}`
   const chainIcon = (id: number) => CHAIN_MAP.get(id)?.icon
