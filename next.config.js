@@ -2,6 +2,6 @@
 const nextConfig = {
   output: 'export',
   images: { unoptimized: true },
-  basePath: '/telos-bridge-lifi',
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH ?? '',
 }
 module.exports = nextConfig
