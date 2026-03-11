@@ -1,0 +1,44 @@
+name: Deploy Preview
+on:
+  pull_request:
+    branches: [main, design-sprint, fix/balance-display]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+        
+      - name: Build
+        run: npx next build
+        env:
+          # Use branch name as basePath for preview
+          NEXT_PUBLIC_BASE_PATH: ''
+          NEXT_PUBLIC_WC_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_WC_PROJECT_ID }}
+          
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+          
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+        with:
+          preview_mode: true
