@@ -567,10 +567,12 @@ export function BridgeForm() {
           const nativeFeeStr = oftQuote?.nativeFeeFormatted || v2Quote?.nativeFeeFormatted
           const fCurrency = CHAIN_MAP.get(fromChain)?.nativeCurrency || 'TLOS'
           if (amount && (oftQuote || v2Quote) && nativeFeeStr && parseFloat(amount) < parseFloat(nativeFeeStr) * 3) {
+            const feeDisplay = parseFloat(nativeFeeStr) >= 1 
+              ? parseFloat(nativeFeeStr).toFixed(0) 
+              : parseFloat(nativeFeeStr).toFixed(4)
             return (
-              <div className="flex items-start gap-2 bg-yellow-500/[0.05] border border-yellow-500/15 rounded-xl px-3.5 py-3 text-xs text-yellow-500/80">
-                <span className="shrink-0 mt-0.5">&#x26A0;&#xFE0F;</span>
-                <span>Amount is low relative to the network fee (~{nativeFeeStr} {fCurrency}). You may receive little or nothing after fees.</span>
+              <div className="bg-amber-500/[0.06] border border-amber-500/10 rounded-xl px-4 py-3 text-xs text-amber-400/90 leading-relaxed">
+                Amount is low relative to the network fee (~{feeDisplay} {fCurrency}). You may receive little or nothing.
               </div>
             )
           }
@@ -620,15 +622,15 @@ export function BridgeForm() {
 
         {/* Network warning */}
         {wrongNetwork && !bridging && !bridgeStatus && (
-          <div className="flex items-center gap-2 bg-yellow-500/[0.05] border border-yellow-500/10 rounded-xl px-3.5 py-2.5 text-xs text-yellow-500/80">
-            <span>⚠</span><span>Will switch to {chainName(fromChain)} on bridge</span>
+          <div className="bg-amber-500/[0.06] border border-amber-500/10 rounded-xl px-4 py-2.5 text-xs text-amber-400/80 leading-relaxed">
+            Will switch to {chainName(fromChain)} on bridge
           </div>
         )}
 
         {/* From non-Telos notice */}
         {fromChain !== 40 && tokenList.length === 1 && (
-          <div className="flex items-center gap-2 bg-telos-cyan/[0.04] border border-telos-cyan/10 rounded-xl px-3.5 py-2.5 text-xs text-telos-cyan/70">
-            <span>ℹ</span><span>Only TLOS bridging available on this route</span>
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-2.5 text-xs text-gray-400 leading-relaxed">
+            Only TLOS bridging available on this route
           </div>
         )}
 
