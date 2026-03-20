@@ -92,7 +92,7 @@ export function ChainSelectorModal({
 
       {/* Modal */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setIsOpen(false)}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 sm:pt-16" onClick={() => setIsOpen(false)}>
           <div className="bg-[#12121a] border-0 sm:border border-gray-800/50 rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 pt-5 sm:pt-6 w-full sm:max-w-md max-h-[80vh] sm:max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className="flex items-center justify-between mb-4 sm:mb-6">
