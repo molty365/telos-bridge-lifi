@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { useAnimation } from './AnimationProvider'
 
 export type TransactionStep = 'idle' | 'submitted' | 'confirming' | 'bridging' | 'completed'
@@ -12,11 +13,39 @@ interface TransactionStepperProps {
   estimatedTime?: string
 }
 
+// Clean modern SVG icons
+const SubmittedIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="22" y1="2" x2="11" y2="13"/>
+    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+  </svg>
+)
+
+const ConfirmingIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12 6 12 12 16 14"/>
+  </svg>
+)
+
+const BridgingIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12h14"/>
+    <path d="M12 5l7 7-7 7"/>
+  </svg>
+)
+
+const CompletedIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+)
+
 interface StepConfig {
   id: TransactionStep
   label: string
   description: string
-  icon: string
+  Icon: () => React.ReactElement
 }
 
 const STEPS: StepConfig[] = [
@@ -24,26 +53,26 @@ const STEPS: StepConfig[] = [
     id: 'submitted',
     label: 'Submitted',
     description: 'Transaction sent to network',
-    icon: '📝'
+    Icon: SubmittedIcon,
   },
   {
     id: 'confirming',
     label: 'Confirming',
     description: 'Waiting for block confirmations',
-    icon: '⏳'
+    Icon: ConfirmingIcon,
   },
   {
     id: 'bridging',
     label: 'Bridging',
     description: 'Cross-chain message relaying',
-    icon: '🌉'
+    Icon: BridgingIcon,
   },
   {
     id: 'completed',
     label: 'Complete',
     description: 'Funds received successfully',
-    icon: '✅'
-  }
+    Icon: CompletedIcon,
+  },
 ]
 
 export function TransactionStepper({
@@ -98,22 +127,23 @@ export function TransactionStepper({
             const status = getStepStatus(index)
             const isCurrent = status === 'current'
             const isCompleted = status === 'completed'
+            const { Icon } = step
 
             return (
               <div key={step.id} className="flex flex-col items-center space-y-2">
                 {/* Step Icon */}
-                <div className={`relative w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm transition-all duration-500 ${
+                <div className={`relative w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all duration-500 ${
                   isCompleted 
                     ? 'border-emerald-400 bg-emerald-400/10 text-emerald-400' 
                     : isCurrent 
-                      ? 'border-telos-cyan bg-telos-cyan/10 text-telos-cyan animate-pulse' 
-                      : 'border-gray-600 bg-gray-800/50 text-gray-500'
-                } ${!reduceMotion && isCurrent ? 'animate-pulse' : ''}`}>
-                  {step.icon}
+                      ? 'border-telos-cyan bg-telos-cyan/10 text-telos-cyan' 
+                      : 'border-gray-700 bg-gray-800/50 text-gray-600'
+                }`}>
+                  <Icon />
                   
                   {/* Animated ring for current step */}
                   {isCurrent && !reduceMotion && (
-                    <div className="absolute inset-0 rounded-full border-2 border-telos-cyan animate-ping opacity-30" />
+                    <div className="absolute inset-0 rounded-full border-2 border-telos-cyan animate-ping opacity-20" />
                   )}
                 </div>
 
