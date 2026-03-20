@@ -649,7 +649,7 @@ export function BridgeForm() {
               {insufficientBalance ? 'Insufficient balance' : 
                quoting ? 'Getting quote...' : 
                bridging ? 'Bridging...' : 
-               hasQuote ? `⚡ Bridge ${token}` : 
+               hasQuote ? `Bridge ${token}` : 
                (!amount || parseFloat(amount) <= 0) ? 'Enter an amount' : 'Get Quote'}
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-telos-cyan/20 via-white/10 to-telos-cyan/20 opacity-0 group-hover:opacity-100 group-hover:animate-pulse transition-opacity duration-200"></div>
@@ -663,7 +663,7 @@ export function BridgeForm() {
         reduceMotion ? '' : 'animate-in fade-in slide-in-from-bottom-2 duration-600 delay-700'
       }`}>
         <span className="inline-flex items-center gap-1.5 text-xs text-telos-cyan/70 bg-telos-cyan/5 border border-telos-cyan/10 rounded-full px-3 py-1.5">
-          ⚡ LayerZero + Stargate — cross-chain bridging, excess fees refunded
+          Powered by LayerZero + Stargate — excess fees refunded
         </span>
       </div>
 

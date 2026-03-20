@@ -122,9 +122,7 @@ export function QuoteDisplay({
           <div className="flex items-center gap-2">
             {isStargate ? (
               <div className="flex items-center gap-1.5">
-                <span className="text-white/90 font-medium">Stargate</span>
-                <span className="text-gray-500 text-[10px]">via</span>
-                <img src="/providers/layerzero.svg" alt="LayerZero" className="h-3.5 opacity-70" />
+                <img src="/providers/stargate.svg" alt="Stargate" className="h-4 opacity-80" />
               </div>
             ) : (
               <div className="flex items-center gap-1.5">
