@@ -92,6 +92,7 @@ export function TransactionStepper({
   const isCompleted = currentStep === 'completed'
 
   const getStepStatus = (stepIndex: number) => {
+    if (isCompleted) return 'completed' // All steps green when bridge is done
     if (stepIndex < currentStepIndex) return 'completed'
     if (stepIndex === currentStepIndex) return 'current'
     return 'pending'
@@ -107,16 +108,20 @@ export function TransactionStepper({
           <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" />
           <span className="text-sm text-gray-400">Transaction Progress</span>
         </div>
-        <div className="text-xs text-gray-500">{estimatedTime} remaining</div>
+        {!isCompleted && <div className="text-xs text-gray-500">{estimatedTime} remaining</div>}
       </div>
 
       {/* Progress Bar */}
       <div className="relative">
         <div className="absolute top-5 left-6 right-6 h-0.5 bg-gray-800">
           <div 
-            className="h-full bg-gradient-to-r from-purple-500 to-telos-cyan transition-all duration-1000 ease-out"
+            className={`h-full transition-all duration-1000 ease-out ${
+              isCompleted 
+                ? 'bg-emerald-400' 
+                : 'bg-gradient-to-r from-purple-500 to-telos-cyan'
+            }`}
             style={{ 
-              width: `${((currentStepIndex + 1) / STEPS.length) * 100}%` 
+              width: isCompleted ? '100%' : `${((currentStepIndex + 1) / STEPS.length) * 100}%` 
             }}
           />
         </div>
@@ -168,20 +173,31 @@ export function TransactionStepper({
         </div>
       </div>
 
-      {/* Transaction Hash */}
+      {/* Transaction Links */}
       {txHash && (
-        <div className={`pt-2 border-t border-white/[0.03] ${
+        <div className={`pt-2 border-t border-white/[0.03] space-y-1.5 ${
           reduceMotion ? '' : 'animate-in fade-in delay-300 duration-400'
         }`}>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-500">Transaction</span>
+            <span className="text-gray-500">Source tx</span>
             <a 
               href={getExplorerUrl(fromChainId, txHash)}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-telos-cyan hover:text-telos-cyan/80 font-mono transition-colors"
+              className="text-telos-cyan hover:text-telos-cyan/70 transition-colors"
             >
-              {txHash.slice(0, 6)}...{txHash.slice(-4)} ↗
+              tx link ↗
+            </a>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-gray-500">LayerZero</span>
+            <a 
+              href={`https://layerzeroscan.com/tx/${txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-purple-400 hover:text-purple-300 transition-colors"
+            >
+              Track on LZScan ↗
             </a>
           </div>
         </div>
