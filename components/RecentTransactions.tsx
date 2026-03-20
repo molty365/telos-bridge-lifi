@@ -24,14 +24,19 @@ const STORAGE_KEY = 'telos_bridge_transactions'
 const MAX_TRANSACTIONS = 50
 
 // Chain configuration for display
-const CHAIN_CONFIG: Record<number, { name: string; icon: string; color: string }> = {
-  40: { name: 'Telos', icon: '🟣', color: 'text-purple-400' },
-  1: { name: 'Ethereum', icon: '⚫', color: 'text-blue-400' },
-  8453: { name: 'Base', icon: '🔵', color: 'text-blue-500' },
-  137: { name: 'Polygon', icon: '🟣', color: 'text-purple-500' },
-  42161: { name: 'Arbitrum', icon: '🔷', color: 'text-cyan-400' },
-  10: { name: 'Optimism', icon: '🔴', color: 'text-red-400' },
-  43114: { name: 'Avalanche', icon: '🔺', color: 'text-red-500' },
+const CHAIN_CONFIG: Record<number, { name: string; iconUrl: string }> = {
+  40: { name: 'Telos', iconUrl: '/chains/telos.png' },
+  1: { name: 'Ethereum', iconUrl: '/chains/ethereum.png' },
+  8453: { name: 'Base', iconUrl: '/chains/base.png' },
+  56: { name: 'BSC', iconUrl: '/chains/bsc.png' },
+  42161: { name: 'Arbitrum', iconUrl: '/chains/arbitrum.png' },
+  137: { name: 'Polygon', iconUrl: '/chains/polygon.png' },
+  43114: { name: 'Avalanche', iconUrl: '/chains/avalanche.png' },
+  10: { name: 'Optimism', iconUrl: '/chains/optimism.png' },
+  534352: { name: 'Scroll', iconUrl: '/chains/scroll.png' },
+  5000: { name: 'Mantle', iconUrl: '/chains/mantle.png' },
+  1329: { name: 'Sei', iconUrl: '/chains/sei.png' },
+  2222: { name: 'Kava', iconUrl: '/chains/kava.png' },
 }
 
 export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps) {
@@ -85,10 +90,15 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
       1: 'https://etherscan.io',
       40: 'https://teloscan.io',
       8453: 'https://basescan.org',
+      56: 'https://bscscan.com',
       137: 'https://polygonscan.com',
       42161: 'https://arbiscan.io',
       10: 'https://optimistic.etherscan.io',
       43114: 'https://snowtrace.io',
+      534352: 'https://scrollscan.com',
+      5000: 'https://mantlescan.xyz',
+      1329: 'https://seitrace.com',
+      2222: 'https://kavascan.com',
     }
     const baseUrl = explorers[chainId] || 'https://teloscan.io'
     return `${baseUrl}/tx/${txHash}`
@@ -143,8 +153,8 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
           ) : (
             <div className="p-4 space-y-3">
               {transactions.map((tx, index) => {
-                const fromChain = CHAIN_CONFIG[tx.fromChain] || { name: `Chain ${tx.fromChain}`, icon: '⚪', color: 'text-gray-400' }
-                const toChain = CHAIN_CONFIG[tx.toChain] || { name: `Chain ${tx.toChain}`, icon: '⚪', color: 'text-gray-400' }
+                const fromChain = CHAIN_CONFIG[tx.fromChain] || { name: `Chain ${tx.fromChain}`, iconUrl: '' }
+                const toChain = CHAIN_CONFIG[tx.toChain] || { name: `Chain ${tx.toChain}`, iconUrl: '' }
                 
                 return (
                   <div
@@ -177,8 +187,8 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
 
                     {/* Chain Route */}
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className={fromChain.color}>{fromChain.icon}</span>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <img src={fromChain.iconUrl} alt={fromChain.name} className="w-4 h-4 rounded-full" onError={(e) => { e.currentTarget.style.display="none" }} />
                         <span className="text-gray-400">{fromChain.name}</span>
                       </div>
                       
@@ -190,27 +200,27 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
                         <div className="w-4 h-0.5 bg-gray-600" />
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs">
+                      <div className="flex items-center gap-1.5 text-xs">
                         <span className="text-gray-400">{toChain.name}</span>
-                        <span className={toChain.color}>{toChain.icon}</span>
+                        <img src={toChain.iconUrl} alt={toChain.name} className="w-4 h-4 rounded-full" onError={(e) => { e.currentTarget.style.display="none" }} />
                       </div>
                     </div>
 
                     {/* Transaction Links */}
                     {tx.txHash && (
-                      <div className="flex flex-col gap-1 pt-1">
+                      <div className="flex flex-col gap-1 pt-1.5 mt-1.5 border-t border-white/[0.04]">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-500">Source tx</span>
+                          <span className="text-gray-600">Source tx</span>
                           <a href={getExplorerUrl(tx.fromChain, tx.txHash)} target="_blank" rel="noopener noreferrer"
-                            className="text-telos-cyan hover:text-telos-cyan/80 font-mono transition-colors">
+                            className="text-telos-cyan hover:text-telos-cyan/70 font-mono transition-colors">
                             {tx.txHash.slice(0, 6)}...{tx.txHash.slice(-4)} ↗
                           </a>
                         </div>
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-500">LayerZero</span>
+                          <span className="text-gray-600">LayerZero</span>
                           <a href={`https://layerzeroscan.com/tx/${tx.txHash}`} target="_blank" rel="noopener noreferrer"
-                            className="text-purple-400 hover:text-purple-300 font-mono transition-colors">
-                            Track ↗
+                            className="text-purple-400 hover:text-purple-300 transition-colors">
+                            Track on LZScan ↗
                           </a>
                         </div>
                       </div>
