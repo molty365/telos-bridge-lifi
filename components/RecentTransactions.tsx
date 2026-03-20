@@ -43,30 +43,42 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
   const { reduceMotion } = useAnimation()
   const [transactions, setTransactions] = useState<BridgeTransaction[]>([])
 
-  // Load transactions from localStorage
+  // Load transactions from localStorage, auto-expiring stale pending ones
   useEffect(() => {
     if (isOpen) {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored)
-          setTransactions(parsed.slice(0, MAX_TRANSACTIONS))
-        } catch (e) {
-          console.error('Failed to parse stored transactions:', e)
-          setTransactions([])
-        }
-      }
+      loadAndExpireTransactions()
     }
   }, [isOpen])
+
+  const loadAndExpireTransactions = () => {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (!stored) return
+    try {
+      const parsed: BridgeTransaction[] = JSON.parse(stored)
+      const STALE_MS = 10 * 60 * 1000 // 10 minutes
+      const now = Date.now()
+      let changed = false
+      const updated = parsed.map(tx => {
+        if (tx.status === 'pending' && (now - tx.timestamp) > STALE_MS) {
+          changed = true
+          return { ...tx, status: 'failed' as const }
+        }
+        return tx
+      })
+      if (changed) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+      }
+      setTransactions(updated.slice(0, MAX_TRANSACTIONS))
+    } catch (e) {
+      console.error('Failed to parse stored transactions:', e)
+      setTransactions([])
+    }
+  }
 
   // Listen for transaction updates (e.g. status changes from BridgeForm)
   useEffect(() => {
     const reload = () => {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        try { setTransactions(JSON.parse(stored).slice(0, MAX_TRANSACTIONS)) }
-        catch(e) { setTransactions([]) }
-      }
+      loadAndExpireTransactions()
     }
     window.addEventListener("telos:tx-updated", reload)
     return () => window.removeEventListener("telos:tx-updated", reload)
