@@ -333,13 +333,18 @@ export function BridgeForm() {
 
     // Enhanced status callback that updates both status and stepper
     const updateProgress = (status: string, hash?: string) => {
-      setBridgeStatus(status)
+      // Extract tx hash from LZ status messages like "✅ TLOS bridged via LayerZero! Track at layerzeroscan.com/tx/0x..."
+      const hashMatch = status.match(/0x[a-fA-F0-9]{60,66}/)
+      const extractedHash = hash || (hashMatch ? hashMatch[0] : undefined)
+
+      // Clean display status — strip the tracking URL part
+      const displayStatus = status.replace(/Track at layerzeroscan\.com\/tx\/\S+/, '').trim()
+      setBridgeStatus(displayStatus)
       
-      if (hash && !transactionHash) {
-        setTransactionHash(hash)
-        // Update transaction with hash
+      if (extractedHash && !transactionHash) {
+        setTransactionHash(extractedHash)
         if (transaction.id) {
-          updateTransaction(transaction.id, { txHash: hash })
+          updateTransaction(transaction.id, { txHash: extractedHash })
         }
       }
       
@@ -380,6 +385,10 @@ export function BridgeForm() {
       setBridgeStatus('Bridge complete. Funds arriving shortly.')
       setTransactionStep('completed')
       setShowSuccessCelebration(true)
+      // Ensure transaction is marked completed in localStorage
+      if (transaction.id) {
+        updateTransaction(transaction.id, { status: 'completed' })
+      }
       setAmount('')
     } catch (e: any) {
       const msg = e.message || 'Bridge failed'
