@@ -521,6 +521,7 @@ export function BridgeForm() {
             onMax={handleMax}
             onHalf={handleHalf}
             onQuarter={() => { if (displayBalance) setAmount((parseFloat(displayBalance.formatted) / 4).toString()) }}
+            className="flex-1 min-w-0"
           />
           
           <TokenSelectorModal 
@@ -549,6 +550,21 @@ export function BridgeForm() {
             estimatedTime="~2 min"
           />
         )}
+
+        {/* Low amount / fee warning */}
+        {(() => {
+          const nativeFeeStr = oftQuote?.nativeFeeFormatted || v2Quote?.nativeFeeFormatted
+          const fCurrency = CHAIN_MAP.get(fromChain)?.nativeCurrency || 'TLOS'
+          if (amount && (oftQuote || v2Quote) && nativeFeeStr && parseFloat(amount) < parseFloat(nativeFeeStr) * 3) {
+            return (
+              <div className="flex items-start gap-2 bg-yellow-500/[0.05] border border-yellow-500/15 rounded-xl px-3.5 py-3 text-xs text-yellow-500/80">
+                <span className="shrink-0 mt-0.5">&#x26A0;&#xFE0F;</span>
+                <span>Amount is low relative to the network fee (~{nativeFeeStr} {fCurrency}). You may receive little or nothing after fees.</span>
+              </div>
+            )
+          }
+          return null
+        })()}
 
         {/* Transaction Progress Stepper */}
         <TransactionStepper

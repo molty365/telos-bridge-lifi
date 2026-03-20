@@ -1,6 +1,7 @@
 'use client'
 
 import { getDefaultConfig } from '@rainbow-me/rainbowkit'
+import { metaMaskWallet, injectedWallet, rainbowWallet, walletConnectWallet, coinbaseWallet, trustWallet } from '@rainbow-me/rainbowkit/wallets'
 import { mainnet, telos, base, bsc, arbitrum, polygon, avalanche, optimism, scroll, mantle, linea, sei, kava, metis, aurora, gnosis } from 'wagmi/chains'
 import { http } from 'wagmi'
 import type { Chain } from 'wagmi/chains'
@@ -154,6 +155,10 @@ const vana = {
 export const config = getDefaultConfig({
   appName: 'Telos Bridge',
   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID || 'e77cdab1b5834264860090a1d10b82b4',
+  wallets: [
+    { groupName: 'Popular', wallets: [metaMaskWallet, injectedWallet, rainbowWallet] },
+    { groupName: 'More', wallets: [walletConnectWallet, coinbaseWallet, trustWallet] },
+  ],
   chains: [telosWithRpc, mainnet, base, bsc, arbitrum, polygon, avalanche, optimism, scroll, mantle, linea, sei, kava, kaia, metis, aurora, gnosis, core, taiko, manta, rootstock, iotaEvm, flare, berachain, degenChain, story, lightlink, apechain, sonic, gravity, flowEvm, xdc, vana],
   transports: {
     [telos.id]: http('https://rpc.telos.net/evm'),

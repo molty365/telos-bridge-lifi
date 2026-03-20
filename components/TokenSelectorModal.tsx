@@ -76,7 +76,7 @@ export function TokenSelectorModal({ selectedToken, tokens, onTokenChange }: Tok
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2.5 bg-gradient-to-br from-[#252535] to-[#1e1e2e] border border-gray-700/50 rounded-xl px-4 py-3 hover:border-gray-600/70 transition-all duration-200 group"
+        className="shrink-0 flex items-center gap-2.5 bg-gradient-to-br from-[#252535] to-[#1e1e2e] border border-gray-700/50 rounded-xl px-4 py-3 hover:border-gray-600/70 transition-all duration-200 group"
       >
         {TOKEN_LOGOS[selectedToken] && (
           <img 
