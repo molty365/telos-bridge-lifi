@@ -181,7 +181,7 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
                         {tx.status === 'pending' && tx.txHash && (
                           <a href={getExplorerUrl(tx.fromChain, tx.txHash)} target="_blank" rel="noopener noreferrer"
                             className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors">
-                            verify ↗
+                            tx link ↗
                           </a>
                         )}
                       </div>
