@@ -93,13 +93,13 @@ const DEFAULT_ADAPTER_PARAMS = '0x0001000000000000000000000000000000000000000000
 // These are paid in SOURCE chain native token (ETH from Ethereum, TLOS from Telos, etc.)
 // Values are conservative estimates — excess is refunded by LayerZero
 const FALLBACK_FEES_FROM_TELOS: Record<number, bigint> = {
-  184: parseEther('20'),   // → Base (in TLOS)
-  110: parseEther('20'),   // → Arbitrum
-  10:  parseEther('20'),   // → Optimism
-  102: parseEther('30'),   // → BSC
-  109: parseEther('30'),   // → Polygon
-  106: parseEther('30'),   // → Avalanche
-  101: parseEther('300'),  // → Ethereum (expensive)
+  184: parseEther('3'),    // → Base (in TLOS)
+  110: parseEther('3'),    // → Arbitrum
+  10:  parseEther('3'),    // → Optimism
+  102: parseEther('5'),    // → BSC
+  109: parseEther('5'),    // → Polygon
+  106: parseEther('5'),    // → Avalanche
+  101: parseEther('50'),   // → Ethereum (expensive)
 }
 // When bridging FROM other chains TO Telos, fee is in that chain's native token
 const FALLBACK_FEES_TO_TELOS: Record<number, bigint> = {

@@ -138,7 +138,7 @@ export function QuoteDisplay({
         </div>
         {nativeFee && (
           <div className="flex justify-between text-xs">
-            <span className="text-gray-500">Network fee <span title={`Destination chain gas cost paid in ${feeCurrency}. This is a fixed relay fee, not a percentage of your transfer amount.`} className="cursor-help">&#9432;</span></span>
+            <span className="text-gray-500">Network fee <span title={`LayerZero relay fee paid in ${feeCurrency}. This is a fixed cost, not a percentage. Excess is automatically refunded after delivery.`} className="cursor-help">&#9432;</span></span>
             <span className="text-gray-300 font-mono">{nativeFee} {feeCurrency} <span className="text-gray-500">(fixed)</span></span>
           </div>
         )}
