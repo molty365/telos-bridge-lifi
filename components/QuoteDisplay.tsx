@@ -150,7 +150,7 @@ export function QuoteDisplay({
       }`}>
         <div className="flex-1 bg-gray-800/50 rounded-full h-1.5 overflow-hidden">
           <div className={`h-full bg-gradient-to-r from-telos-cyan to-emerald-400 rounded-full ${
-            reduceMotion ? '' : 'animate-pulse'
+            ''
           }`} style={{width: '85%'}} />
         </div>
         <span className="text-xs text-gray-500">85% savings vs alternatives</span>

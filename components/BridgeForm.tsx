@@ -652,7 +652,7 @@ export function BridgeForm() {
                hasQuote ? `Bridge ${token}` : 
                (!amount || parseFloat(amount) <= 0) ? 'Enter an amount' : 'Get Quote'}
             </span>
-            <div className="absolute inset-0 bg-gradient-to-r from-telos-cyan/20 via-white/10 to-telos-cyan/20 opacity-0 group-hover:opacity-100 group-hover:animate-pulse transition-opacity duration-200"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-telos-cyan/10 via-white/5 to-telos-cyan/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           </button>
         )}
         </div>

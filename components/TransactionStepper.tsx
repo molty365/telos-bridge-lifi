@@ -148,7 +148,7 @@ export function TransactionStepper({
                   
                   {/* Animated ring for current step */}
                   {isCurrent && !reduceMotion && (
-                    <div className="absolute inset-0 rounded-full border-2 border-telos-cyan animate-ping opacity-20" />
+                    <div className="absolute inset-0 rounded-full border border-telos-cyan/30" />
                   )}
                 </div>
 
