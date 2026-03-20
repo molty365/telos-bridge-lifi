@@ -54,6 +54,19 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
     }
   }, [isOpen])
 
+  // Listen for transaction updates (e.g. status changes from BridgeForm)
+  useEffect(() => {
+    const reload = () => {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        try { setTransactions(JSON.parse(stored).slice(0, MAX_TRANSACTIONS)) }
+        catch(e) { setTransactions([]) }
+      }
+    }
+    window.addEventListener("telos:tx-updated", reload)
+    return () => window.removeEventListener("telos:tx-updated", reload)
+  }, [])
+
   const formatTime = (timestamp: number) => {
     const now = Date.now()
     const diff = now - timestamp
@@ -121,7 +134,9 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
         <div className="flex-1 overflow-y-auto">
           {transactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-8 text-center">
-              <div className="text-4xl mb-4">🌉</div>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="text-gray-600 mb-4">
+                <path d="M2 18h20M5 18V8m14 10V8M9 18v-4m6 4v-4M5 8c0-2 2-4 7-4s7 2 7 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
               <h4 className="text-gray-400 text-sm font-medium mb-2">No bridges yet</h4>
               <p className="text-gray-500 text-xs">Your bridge transactions will appear here</p>
             </div>
@@ -181,18 +196,23 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
                       </div>
                     </div>
 
-                    {/* Transaction Hash */}
+                    {/* Transaction Links */}
                     {tx.txHash && (
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-500">Tx Hash</span>
-                        <a
-                          href={getExplorerUrl(tx.fromChain, tx.txHash)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-telos-cyan hover:text-telos-cyan/80 font-mono transition-colors"
-                        >
-                          {tx.txHash.slice(0, 6)}...{tx.txHash.slice(-4)} ↗
-                        </a>
+                      <div className="flex flex-col gap-1 pt-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">Source tx</span>
+                          <a href={getExplorerUrl(tx.fromChain, tx.txHash)} target="_blank" rel="noopener noreferrer"
+                            className="text-telos-cyan hover:text-telos-cyan/80 font-mono transition-colors">
+                            {tx.txHash.slice(0, 6)}...{tx.txHash.slice(-4)} ↗
+                          </a>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-500">LayerZero</span>
+                          <a href={`https://layerzeroscan.com/tx/${tx.txHash}`} target="_blank" rel="noopener noreferrer"
+                            className="text-purple-400 hover:text-purple-300 font-mono transition-colors">
+                            Track ↗
+                          </a>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -257,6 +277,9 @@ export function updateTransaction(id: string, updates: Partial<BridgeTransaction
     if (index !== -1) {
       transactions[index] = { ...transactions[index], ...updates }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions))
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("telos:tx-updated"))
+      }
     }
   } catch (e) {
     console.error('Failed to update transaction:', e)
