@@ -13,6 +13,8 @@ const telosWithRpc = {
     default: { http: ['https://rpc.telos.net/evm'] },
     public: { http: ['https://rpc.telos.net/evm'] },
   },
+  iconUrl: '/chains/telos.png',
+  iconBackground: '#00F2FE',
 } as const
 
 // Custom chain definitions (not in wagmi/chains by default)
