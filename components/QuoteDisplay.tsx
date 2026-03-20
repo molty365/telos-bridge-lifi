@@ -119,11 +119,19 @@ export function QuoteDisplay({
       }`}>
         <div className="flex justify-between items-center text-xs">
           <span className="text-gray-500">Route</span>
-          <div className="flex items-center gap-1.5">
-            <span className="text-telos-cyan font-medium">
-              ⚡ {isStargate ? 'Stargate (V2)' : 'LayerZero OFT'}
-            </span>
-            {isStargate && <span className="text-emerald-400 text-[10px] bg-emerald-400/10 px-1.5 py-0.5 rounded">FASTEST</span>}
+          <div className="flex items-center gap-2">
+            {isStargate ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-white/90 font-medium">Stargate</span>
+                <span className="text-gray-500 text-[10px]">via</span>
+                <img src="/providers/layerzero.svg" alt="LayerZero" className="h-3.5 opacity-70" />
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <img src="/providers/layerzero.svg" alt="LayerZero" className="h-3.5 opacity-80" />
+                <span className="text-white/70 text-[10px]">OFT</span>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex justify-between text-xs">

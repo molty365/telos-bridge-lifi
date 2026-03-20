@@ -481,39 +481,41 @@ export function BridgeForm() {
         <div className="bg-[#12121a]/80 backdrop-blur-xl rounded-2xl p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5 shadow-2xl shadow-black/40 transition-all duration-300 hover:shadow-3xl hover:shadow-telos-cyan/5">
 
         {/* Chain selector row */}
-        <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center gap-0 sm:gap-3">
-          {/* Shared background wrapper on mobile to eliminate seam line */}
-          <div className="flex flex-col sm:contents bg-[#1a1a28] rounded-xl sm:bg-transparent sm:rounded-none overflow-hidden">
+        <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center gap-0 sm:gap-0">
+          {/* From chain */}
+          <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-t-xl sm:rounded-xl overflow-hidden">
             <ChainSelectorModal
               label="From"
               selectedChainId={fromChain}
               chains={filteredChains}
               onChainChange={handleFromChain}
-              className="sm:flex-1 rounded-none sm:rounded-xl"
+              className="rounded-none"
             />
+          </div>
 
-            {/* Subtle divider line on mobile */}
-            <div className="h-px bg-gray-700/20 sm:hidden" />
+          {/* Swap button — between the two selectors */}
+          <div className="relative z-20 flex items-center justify-center sm:mx-1" style={{ marginTop: '-12px', marginBottom: '-12px' }}>
+            <button 
+              onClick={swap}
+              className="w-10 h-10 rounded-full bg-[#1a1a28] border-2 sm:border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 hover:rotate-180 duration-300 text-gray-400 hover:text-telos-cyan shrink-0 group active:scale-95 touch-manipulation shadow-lg shadow-black/50 sm:shadow-none"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="group-hover:scale-110 transition-transform rotate-90 sm:rotate-0">
+                <path d="M7 10L12 5L17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M7 14L12 19L17 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
 
+          {/* To chain */}
+          <div className="flex-1 min-w-0 bg-[#1a1a28] rounded-b-xl sm:rounded-xl overflow-hidden">
             <ChainSelectorModal
               label="To"
               selectedChainId={toChain}
               chains={filteredChains}
               onChainChange={handleToChain}
-              className="sm:flex-1 rounded-none sm:rounded-xl"
+              className="rounded-none"
             />
           </div>
-
-          {/* Swap button — overlaps the seam on mobile, inline on desktop */}
-          <button 
-            onClick={swap}
-            className="absolute sm:relative left-1/2 sm:left-auto top-1/2 sm:top-auto -translate-x-1/2 sm:translate-x-0 -translate-y-1/2 sm:translate-y-0 z-20 w-10 h-10 sm:w-10 sm:h-10 rounded-full bg-[#1a1a28] border-2 sm:border border-gray-700/50 flex items-center justify-center hover:border-telos-cyan/50 hover:bg-telos-cyan/5 hover:rotate-180 duration-300 text-gray-400 hover:text-telos-cyan shrink-0 group active:scale-95 touch-manipulation shadow-lg shadow-black/50 sm:shadow-none"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="group-hover:scale-110 transition-transform rotate-90 sm:rotate-0">
-              <path d="M7 10L12 5L17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M7 14L12 19L17 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
         </div>
 
         {/* Subtle separator */}
