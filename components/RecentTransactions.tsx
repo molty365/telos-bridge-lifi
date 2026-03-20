@@ -55,20 +55,7 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
     if (!stored) return
     try {
       const parsed: BridgeTransaction[] = JSON.parse(stored)
-      const STALE_MS = 10 * 60 * 1000 // 10 minutes
-      const now = Date.now()
-      let changed = false
-      const updated = parsed.map(tx => {
-        if (tx.status === 'pending' && (now - tx.timestamp) > STALE_MS) {
-          changed = true
-          return { ...tx, status: 'failed' as const }
-        }
-        return tx
-      })
-      if (changed) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-      }
-      setTransactions(updated.slice(0, MAX_TRANSACTIONS))
+      setTransactions(parsed.slice(0, MAX_TRANSACTIONS))
     } catch (e) {
       console.error('Failed to parse stored transactions:', e)
       setTransactions([])
@@ -189,8 +176,14 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
                               ? 'bg-yellow-400/10 text-yellow-400'
                               : 'bg-red-400/10 text-red-400'
                         }`}>
-                          {tx.status}
+                          {tx.status === 'pending' ? 'submitted' : tx.status}
                         </span>
+                        {tx.status === 'pending' && tx.txHash && (
+                          <a href={getExplorerUrl(tx.fromChain, tx.txHash)} target="_blank" rel="noopener noreferrer"
+                            className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors">
+                            verify ↗
+                          </a>
+                        )}
                       </div>
                       <div className="text-xs text-gray-500">
                         {formatTime(tx.timestamp)}
