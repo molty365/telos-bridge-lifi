@@ -377,7 +377,7 @@ export function BridgeForm() {
           address, address, updateProgress)
         setV2Quote(null)
       }
-      setBridgeStatus('✅ Bridge complete! Funds arriving shortly.')
+      setBridgeStatus('Bridge complete. Funds arriving shortly.')
       setTransactionStep('completed')
       setShowSuccessCelebration(true)
       setAmount('')

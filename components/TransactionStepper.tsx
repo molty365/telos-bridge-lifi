@@ -190,12 +190,12 @@ export function TransactionStepper({
       {/* Success State */}
       {isCompleted && (
         <div className={`bg-emerald-400/5 border border-emerald-400/10 rounded-lg p-3 text-center ${
-          reduceMotion ? '' : 'animate-in zoom-in-95 fade-in delay-500 duration-500'
+          reduceMotion ? '' : 'animate-in fade-in delay-300 duration-400'
         }`}>
           <div className="text-emerald-400 text-sm font-medium">
-            🎉 Bridge completed successfully!
+            Bridge completed
           </div>
-          <div className="text-emerald-400/70 text-xs mt-1">
+          <div className="text-emerald-400/60 text-xs mt-0.5">
             Funds should appear in your wallet shortly
           </div>
         </div>
