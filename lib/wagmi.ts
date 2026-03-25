@@ -164,6 +164,7 @@ export const config = getDefaultConfig({
   chains: [telosWithRpc, mainnet, base, bsc, arbitrum, polygon, avalanche, optimism, scroll, mantle, linea, sei, kava, kaia, metis, aurora, gnosis, core, taiko, manta, rootstock, iotaEvm, flare, berachain, degenChain, story, lightlink, apechain, sonic, gravity, flowEvm, xdc, vana],
   transports: {
     [telos.id]: http('https://rpc.telos.net/evm'),
+    [polygon.id]: http('https://rpc.ankr.com/polygon'),
   },
   ssr: true,
 })
