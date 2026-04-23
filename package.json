@@ -1,5 +1,5 @@
 {
-  "name": "telos-bridge-lifi",
+  "name": "telos-bridge-v3",
   "version": "1.0.0",
   "description": "Static Next.js bridge UI for Telos cross-chain transfers over LayerZero and Stargate.",
   "scripts": {
