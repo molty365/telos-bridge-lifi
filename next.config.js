@@ -7,7 +7,7 @@ const normalizedBasePath = !rawBasePath || rawBasePath === '/'
   : rawBasePath.startsWith('/')
     ? rawBasePath.replace(/\/$/, '')
     : `/${rawBasePath.replace(/\/$/, '')}`
-const basePath = rawBasePath === undefined ? '/telos-bridge-lifi' : normalizedBasePath
+const basePath = rawBasePath === undefined ? '/telos-bridge-v3' : normalizedBasePath
 
 const nextConfig = {
   output: 'export',
