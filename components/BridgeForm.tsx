@@ -6,18 +6,7 @@ import { createPublicClient, http } from 'viem'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { SUPPORTED_CHAINS, CHAIN_MAP } from '@/lib/chains'
 import { TOKEN_ICONS } from '@/lib/constants'
-
-// RPC endpoints for fallback public clients (no wallet needed)
-const CHAIN_RPCS: Record<number, string> = {
-  40: 'https://rpc.telos.net/evm',
-  1: 'https://eth.llamarpc.com',
-  8453: 'https://mainnet.base.org',
-  56: 'https://bsc-dataseed.binance.org',
-  42161: 'https://arb1.arbitrum.io/rpc',
-  137: 'https://polygon-rpc.com',
-  43114: 'https://api.avax.network/ext/bc/C/rpc',
-  10: 'https://mainnet.optimism.io',
-}
+import { CHAIN_RPC_URLS } from '@/lib/rpcs'
 import { isTlosOftRoute, quoteOftSend, executeOftSend, isMstOftRoute, quoteMstSend, executeMstSend, getMstSupportedChains, TLOS_OFT_ADDRESSES, MST_OFT_ADDRESSES, type OftQuoteResult } from '@/lib/oft'
 import { isOftV2Route, getAvailableOftV2Tokens, quoteOftV2Send, executeOftV2Send, OFT_V2_TOKENS, type OftV2QuoteResult } from '@/lib/oft-v2'
 import { AmountInput } from './AmountInput'
@@ -146,8 +135,8 @@ export function BridgeForm() {
   const [showSuccessCelebration, setShowSuccessCelebration] = useState(false)
   const wagmiPublicClient = usePublicClient({ chainId: fromChain })
   // Fallback: create a direct viem client if wagmi hasn't hydrated yet
-  const publicClient = wagmiPublicClient ?? (CHAIN_RPCS[fromChain] ? createPublicClient({
-    transport: http(CHAIN_RPCS[fromChain]),
+  const publicClient = wagmiPublicClient ?? (CHAIN_RPC_URLS[fromChain] ? createPublicClient({
+    transport: http(CHAIN_RPC_URLS[fromChain]),
   }) : undefined)
   const quoteTimeout = useRef<NodeJS.Timeout | null>(null)
 
@@ -665,7 +654,7 @@ export function BridgeForm() {
         reduceMotion ? '' : 'animate-in fade-in slide-in-from-bottom-2 duration-600 delay-700'
       }`}>
         <span className="inline-flex items-center gap-1.5 text-xs text-telos-cyan/70 bg-telos-cyan/5 border border-telos-cyan/10 rounded-full px-3 py-1.5">
-          Powered by LayerZero + Stargate — excess fees refunded
+          Cross-chain transfers with transparent fee refunds
         </span>
       </div>
 

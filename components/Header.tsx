@@ -14,7 +14,7 @@ export function Header() {
           <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">
             Telos <span className="bg-gradient-to-r from-telos-cyan to-telos-blue bg-clip-text text-transparent">Bridge</span>
           </h1>
-          <p className="text-[9px] sm:text-[10px] text-gray-500 -mt-0.5 hidden sm:block">LayerZero OFT</p>
+          <p className="text-[9px] sm:text-[10px] text-gray-500 -mt-0.5 hidden sm:block">Cross-Chain Transfers</p>
         </div>
       </div>
       <div className="scale-90 sm:scale-100 origin-right">

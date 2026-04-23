@@ -5,6 +5,7 @@ import { metaMaskWallet, injectedWallet, rainbowWallet, walletConnectWallet, coi
 import { mainnet, telos, base, bsc, arbitrum, polygon, avalanche, optimism, scroll, mantle, linea, sei, kava, metis, aurora, gnosis } from 'wagmi/chains'
 import { http } from 'wagmi'
 import type { Chain } from 'wagmi/chains'
+import { CHAIN_RPC_URLS } from '@/lib/rpcs'
 
 // Override Telos RPC — default mainnet.telos.net/evm blocks browser requests
 const telosWithRpc = {
@@ -94,8 +95,8 @@ const story = {
   id: 1514,
   name: 'Story Protocol',
   nativeCurrency: { name: 'IP', symbol: 'IP', decimals: 18 },
-  rpcUrls: { default: { http: ['https://rpc.story.foundation'] } },
-  blockExplorers: { default: { name: 'Story Explorer', url: 'https://testnet.story.foundation' } },
+  rpcUrls: { default: { http: ['https://mainnet.storyrpc.io'] } },
+  blockExplorers: { default: { name: 'StoryScan', url: 'https://www.storyscan.io' } },
 } as const satisfies Chain
 
 const lightlink = {
@@ -142,7 +143,7 @@ const xdc = {
   id: 50,
   name: 'XDC Network',
   nativeCurrency: { name: 'XDC', symbol: 'XDC', decimals: 18 },
-  rpcUrls: { default: { http: ['https://erpc.xinfin.network'] } },
+  rpcUrls: { default: { http: ['https://rpc.xdc.org'] } },
   blockExplorers: { default: { name: 'XDC Explorer', url: 'https://explorer.xinfin.network' } },
 } as const satisfies Chain
 
@@ -154,6 +155,10 @@ const vana = {
   blockExplorers: { default: { name: 'VanaScan', url: 'https://vanascan.io' } },
 } as const satisfies Chain
 
+const transports = Object.fromEntries(
+  Object.entries(CHAIN_RPC_URLS).map(([chainId, rpcUrl]) => [Number(chainId), http(rpcUrl)])
+)
+
 export const config = getDefaultConfig({
   appName: 'Telos Bridge',
   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID || 'e77cdab1b5834264860090a1d10b82b4',
@@ -162,9 +167,6 @@ export const config = getDefaultConfig({
     { groupName: 'More', wallets: [walletConnectWallet, coinbaseWallet, trustWallet] },
   ],
   chains: [telosWithRpc, mainnet, base, bsc, arbitrum, polygon, avalanche, optimism, scroll, mantle, linea, sei, kava, kaia, metis, aurora, gnosis, core, taiko, manta, rootstock, iotaEvm, flare, berachain, degenChain, story, lightlink, apechain, sonic, gravity, flowEvm, xdc, vana],
-  transports: {
-    [telos.id]: http('https://rpc.telos.net/evm'),
-    [polygon.id]: http('https://rpc.ankr.com/polygon'),
-  },
+  transports,
   ssr: true,
 })
