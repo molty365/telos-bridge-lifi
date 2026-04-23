@@ -9,6 +9,7 @@ interface AmountInputProps {
   onMax: () => void
   onHalf: () => void
   onQuarter: () => void
+  className?: string
 }
 
 export function AmountInput({ 
@@ -19,7 +20,8 @@ export function AmountInput({
   insufficientBalance, 
   onMax, 
   onHalf,
-  onQuarter
+  onQuarter,
+  className
 }: AmountInputProps) {
   const quickAmounts = [
     { label: '25%', action: onQuarter },
@@ -28,7 +30,7 @@ export function AmountInput({
   ]
 
   return (
-    <div className="bg-[#1a1a28] rounded-xl p-5 space-y-3 focus-within:ring-1 focus-within:ring-telos-cyan/30 transition-all duration-200 group">
+    <div className={`bg-[#1a1a28] rounded-xl p-5 space-y-3 focus-within:ring-1 focus-within:ring-telos-cyan/30 transition-all duration-200 group ${className || ''}`}>
       {/* Amount input */}
       <div className="flex items-center justify-between">
         <input 

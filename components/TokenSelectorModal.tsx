@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { TOKEN_ICONS } from '@/lib/constants'
 
 interface TokenSelectorModalProps {
   selectedToken: string
@@ -8,14 +9,7 @@ interface TokenSelectorModalProps {
   onTokenChange: (token: string) => void
 }
 
-const TOKEN_LOGOS: Record<string, string> = {
-  TLOS: '/tokens/TLOS.svg',
-  USDC: '/tokens/USDC.png',
-  USDT: '/tokens/USDT.png',
-  ETH: '/tokens/ETH.png',
-  WBTC: '/tokens/WBTC.png',
-  MST: '/tokens/MST.svg',
-}
+const TOKEN_LOGOS = TOKEN_ICONS
 
 const TOKEN_INFO: Record<string, { name: string; description: string; category: string }> = {
   TLOS: { name: 'Telos', description: 'Native token of Telos EVM', category: 'Native' },
@@ -23,7 +17,7 @@ const TOKEN_INFO: Record<string, { name: string; description: string; category: 
   USDT: { name: 'Tether USD', description: 'Stablecoin by Tether', category: 'Stablecoin' },
   ETH: { name: 'Ethereum', description: 'Native Ethereum token', category: 'Native' },
   WBTC: { name: 'Wrapped Bitcoin', description: 'Bitcoin on Ethereum', category: 'Wrapped' },
-  MST: { name: 'Monster Token', description: 'Gaming token on Telos', category: 'Gaming' },
+  MST: { name: 'Meridian MST', description: ' Meridian Star Token on Telos', category: 'Gaming' },
 }
 
 const TOKEN_COLORS: Record<string, string> = {
@@ -82,7 +76,7 @@ export function TokenSelectorModal({ selectedToken, tokens, onTokenChange }: Tok
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2.5 bg-gradient-to-br from-[#252535] to-[#1e1e2e] border border-gray-700/50 rounded-xl px-4 py-3 hover:border-gray-600/70 transition-all duration-200 group"
+        className="shrink-0 flex items-center gap-2.5 bg-gradient-to-br from-[#252535] to-[#1e1e2e] border border-gray-700/50 rounded-xl px-4 py-3 hover:border-gray-600/70 transition-all duration-200 group"
       >
         {TOKEN_LOGOS[selectedToken] && (
           <img 
@@ -112,7 +106,7 @@ export function TokenSelectorModal({ selectedToken, tokens, onTokenChange }: Tok
 
       {/* Modal */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setIsOpen(false)}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 sm:pt-16" onClick={() => setIsOpen(false)}>
           <div className="bg-[#12121a] border-0 sm:border border-gray-800/50 rounded-t-2xl sm:rounded-2xl p-4 sm:p-6 w-full sm:max-w-md max-h-[80vh] sm:max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className="flex items-center justify-between mb-4 sm:mb-6">

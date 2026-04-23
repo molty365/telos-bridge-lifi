@@ -89,32 +89,17 @@ const DEFAULT_ADAPTER_PARAMS = '0x0001000000000000000000000000000000000000000000
 
 // Fallback LZ fees by destination (tested values + buffer)
 // Real: Base ~11 TLOS, ETH ~208 TLOS. Add 50% buffer, excess refunded.
-<<<<<<< HEAD
-const FALLBACK_FEES: Record<number, bigint> = {
-  // Real on-chain sendFrom values (Base scan Feb 2026): 0.000233–0.001256 ETH
-  // Using 199 (→Telos) as the key since that's the dstChainId when bridging TO Telos
-  199: parseEther('0.0015'),  // → Telos (padded ~20% above observed max 0.001256)
-  184: parseEther('0.0013'),  // Base → anywhere
-  110: parseEther('0.0002'),  // Arbitrum (L2, very cheap, observed 0.000123)
-  10:  parseEther('0.0002'),  // Optimism
-  102: parseEther('0.002'),   // BSC
-  109: parseEther('0.01'),    // Polygon (in MATIC)
-  106: parseEther('0.005'),   // Avalanche (in AVAX)
-  101: parseEther('0.0005'),  // Ethereum (observed 0.000447)
-}
-const DEFAULT_FALLBACK_FEE = parseEther('0.001')
-=======
 // Fallback LZ fees indexed by destination LZ chain ID
 // These are paid in SOURCE chain native token (ETH from Ethereum, TLOS from Telos, etc.)
 // Values are conservative estimates — excess is refunded by LayerZero
 const FALLBACK_FEES_FROM_TELOS: Record<number, bigint> = {
-  184: parseEther('20'),   // → Base (in TLOS)
-  110: parseEther('20'),   // → Arbitrum
-  10:  parseEther('20'),   // → Optimism
-  102: parseEther('30'),   // → BSC
-  109: parseEther('30'),   // → Polygon
-  106: parseEther('30'),   // → Avalanche
-  101: parseEther('300'),  // → Ethereum (expensive)
+  184: parseEther('3'),    // → Base (in TLOS)
+  110: parseEther('3'),    // → Arbitrum
+  10:  parseEther('3'),    // → Optimism
+  102: parseEther('5'),    // → BSC
+  109: parseEther('5'),    // → Polygon
+  106: parseEther('5'),    // → Avalanche
+  101: parseEther('50'),   // → Ethereum (expensive)
 }
 // When bridging FROM other chains TO Telos, fee is in that chain's native token
 const FALLBACK_FEES_TO_TELOS: Record<number, bigint> = {
@@ -127,34 +112,10 @@ const FALLBACK_FEES_TO_TELOS: Record<number, bigint> = {
   43114: parseEther('0.1'),    // from Avalanche (AVAX)
 }
 const DEFAULT_FALLBACK_FEE = parseEther('0.01')
->>>>>>> eb0fbbe (fix: mobile UI, fee estimation, connect wallet button, Superbridge-style layout)
 
 function addressToBytes32(addr: Address): Hex {
   return ('0x' + addr.slice(2).toLowerCase().padStart(64, '0')) as Hex
 }
-
-const ERC20_APPROVE_ABI = [
-  {
-    name: 'approve',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'spender', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-  {
-    name: 'allowance',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [
-      { name: 'owner', type: 'address' },
-      { name: 'spender', type: 'address' },
-    ],
-    outputs: [{ name: '', type: 'uint256' }],
-  },
-] as const
 
 export function isTlosOftRoute(fromChain: number, toChain: number, fromToken: string, toToken: string): boolean {
   return (
@@ -462,78 +423,30 @@ export async function executeOftSend(
   // Add 10% buffer to fee; LayerZero refunds any excess
   const feeWithBuffer = nativeFee + nativeFee / 10n
 
-  let txHash: Hex
+  // NativeOFT: msg.value = TLOS amount + LZ fee (no ERC20 approval needed)
+  const totalValue = amountLD + feeWithBuffer
 
-  if (fromChain === 40) {
-    // Telos source: NativeOFT Adapter — msg.value = TLOS amount + LZ fee, no ERC-20 approval needed
-    const totalValue = amountLD + feeWithBuffer
-    onStatus('Confirm in wallet...')
-    txHash = await walletClient.writeContract({
-      address: oftAddress,
-      abi: OFT_V1_ABI,
-      functionName: 'sendFrom',
-      args: [
-        fromAddress,
-        dstChainId,
-        toBytes32,
-        amountLD,
-        {
-          refundAddress: fromAddress,
-          zroPaymentAddress: '0x0000000000000000000000000000000000000000' as Address,
-          adapterParams: DEFAULT_ADAPTER_PARAMS,
-        },
-      ],
-      value: totalValue,
-      gas: 500000n,
-      chain: undefined,
-      account: fromAddress,
-    })
-  } else {
-    // Non-Telos source: standard OFT ERC-20 — approve first, then sendFrom with msg.value = fee only
-    onStatus('Checking TLOS token allowance...')
-    const currentAllowance = await publicClient.readContract({
-      address: oftAddress,
-      abi: ERC20_APPROVE_ABI,
-      functionName: 'allowance',
-      args: [fromAddress, oftAddress],
-    }) as bigint
-
-    if (currentAllowance < amountLD) {
-      onStatus('Approving TLOS token spend...')
-      const approveTx = await walletClient.writeContract({
-        address: oftAddress,
-        abi: ERC20_APPROVE_ABI,
-        functionName: 'approve',
-        args: [oftAddress, amountLD],
-        chain: undefined,
-        account: fromAddress,
-      })
-      onStatus('Waiting for approval confirmation...')
-      await publicClient.waitForTransactionReceipt({ hash: approveTx })
-    }
-
-    onStatus('Confirm bridge transaction in wallet...')
-    txHash = await walletClient.writeContract({
-      address: oftAddress,
-      abi: OFT_V1_ABI,
-      functionName: 'sendFrom',
-      args: [
-        fromAddress,
-        dstChainId,
-        toBytes32,
-        amountLD,
-        {
-          refundAddress: fromAddress,
-          zroPaymentAddress: '0x0000000000000000000000000000000000000000' as Address,
-          adapterParams: DEFAULT_ADAPTER_PARAMS,
-        },
-      ],
-      value: feeWithBuffer, // fee only, not amount
-      gas: 500000n,
-      chain: undefined,
-      account: fromAddress,
-    })
-  }
+  onStatus('Confirm in wallet...')
+  const txHash = await walletClient.writeContract({
+    address: oftAddress,
+    abi: OFT_V1_ABI,
+    functionName: 'sendFrom',
+    args: [
+      fromAddress,
+      dstChainId,
+      toBytes32,
+      amountLD,
+      {
+        refundAddress: fromAddress,
+        zroPaymentAddress: '0x0000000000000000000000000000000000000000' as Address,
+        adapterParams: DEFAULT_ADAPTER_PARAMS,
+      },
+    ],
+    value: totalValue,
+    gas: 500000n,
+    chain: undefined,
+    account: fromAddress,
+  })
 
   onStatus('Transaction submitted, waiting for confirmation...')
   await publicClient.waitForTransactionReceipt({ hash: txHash })

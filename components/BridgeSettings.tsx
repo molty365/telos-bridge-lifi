@@ -74,7 +74,7 @@ export function BridgeSettings({
                 <div className="text-xs text-white font-medium">{gasPrice || '~2'} gwei</div>
               </button>
               <button className="p-3 rounded-lg border border-telos-cyan/30 bg-telos-cyan/5 text-left">
-                <div className="text-xs text-telos-cyan mb-1">⚡ Fast</div>
+                <div className="text-xs text-telos-cyan mb-1">Fast</div>
                 <div className="text-xs text-white font-medium">{gasPrice ? `~${(parseFloat(gasPrice) * 1.2).toFixed(1)}` : '~2.4'} gwei</div>
               </button>
               <button className="p-3 rounded-lg border border-gray-700/50 hover:border-orange-400/30 transition-all duration-200 text-left">

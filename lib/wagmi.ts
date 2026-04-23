@@ -1,9 +1,11 @@
 'use client'
 
 import { getDefaultConfig } from '@rainbow-me/rainbowkit'
+import { metaMaskWallet, injectedWallet, rainbowWallet, walletConnectWallet, coinbaseWallet, trustWallet } from '@rainbow-me/rainbowkit/wallets'
 import { mainnet, telos, base, bsc, arbitrum, polygon, avalanche, optimism, scroll, mantle, linea, sei, kava, metis, aurora, gnosis } from 'wagmi/chains'
 import { http } from 'wagmi'
 import type { Chain } from 'wagmi/chains'
+import { CHAIN_RPC_URLS } from '@/lib/rpcs'
 
 // Override Telos RPC — default mainnet.telos.net/evm blocks browser requests
 const telosWithRpc = {
@@ -12,6 +14,8 @@ const telosWithRpc = {
     default: { http: ['https://rpc.telos.net/evm'] },
     public: { http: ['https://rpc.telos.net/evm'] },
   },
+  iconUrl: '/chains/telos.png',
+  iconBackground: '#00F2FE',
 } as const
 
 // Custom chain definitions (not in wagmi/chains by default)
@@ -91,8 +95,8 @@ const story = {
   id: 1514,
   name: 'Story Protocol',
   nativeCurrency: { name: 'IP', symbol: 'IP', decimals: 18 },
-  rpcUrls: { default: { http: ['https://rpc.story.foundation'] } },
-  blockExplorers: { default: { name: 'Story Explorer', url: 'https://testnet.story.foundation' } },
+  rpcUrls: { default: { http: ['https://mainnet.storyrpc.io'] } },
+  blockExplorers: { default: { name: 'StoryScan', url: 'https://www.storyscan.io' } },
 } as const satisfies Chain
 
 const lightlink = {
@@ -139,7 +143,7 @@ const xdc = {
   id: 50,
   name: 'XDC Network',
   nativeCurrency: { name: 'XDC', symbol: 'XDC', decimals: 18 },
-  rpcUrls: { default: { http: ['https://erpc.xinfin.network'] } },
+  rpcUrls: { default: { http: ['https://rpc.xdc.org'] } },
   blockExplorers: { default: { name: 'XDC Explorer', url: 'https://explorer.xinfin.network' } },
 } as const satisfies Chain
 
@@ -151,32 +155,18 @@ const vana = {
   blockExplorers: { default: { name: 'VanaScan', url: 'https://vanascan.io' } },
 } as const satisfies Chain
 
+const transports = Object.fromEntries(
+  Object.entries(CHAIN_RPC_URLS).map(([chainId, rpcUrl]) => [Number(chainId), http(rpcUrl)])
+)
+
 export const config = getDefaultConfig({
   appName: 'Telos Bridge',
   projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID || 'e77cdab1b5834264860090a1d10b82b4',
+  wallets: [
+    { groupName: 'Popular', wallets: [metaMaskWallet, injectedWallet, rainbowWallet] },
+    { groupName: 'More', wallets: [walletConnectWallet, coinbaseWallet, trustWallet] },
+  ],
   chains: [telosWithRpc, mainnet, base, bsc, arbitrum, polygon, avalanche, optimism, scroll, mantle, linea, sei, kava, kaia, metis, aurora, gnosis, core, taiko, manta, rootstock, iotaEvm, flare, berachain, degenChain, story, lightlink, apechain, sonic, gravity, flowEvm, xdc, vana],
-  transports: {
-    [telosWithRpc.id]: http('https://rpc.telos.net/evm'),
-    [mainnet.id]: http(),
-    [base.id]: http(),
-    [bsc.id]: http(),
-    [arbitrum.id]: http(),
-    [polygon.id]: http(),
-    [avalanche.id]: http(),
-    [optimism.id]: http(),
-    [scroll.id]: http(),
-    [mantle.id]: http(),
-    [linea.id]: http(),
-    [sei.id]: http(),
-    [kava.id]: http(),
-    [kaia.id]: http('https://public-en.node.kaia.io'),
-    [metis.id]: http(),
-    [aurora.id]: http(),
-    [gnosis.id]: http(),
-    [core.id]: http('https://rpc.coredao.org'),
-    [taiko.id]: http('https://rpc.mainnet.taiko.xyz'),
-    [manta.id]: http('https://pacific-rpc.manta.network/http'),
-    [rootstock.id]: http('https://public-node.rsk.co'),
-  },
+  transports,
   ssr: true,
 })

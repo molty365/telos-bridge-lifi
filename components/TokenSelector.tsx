@@ -1,19 +1,14 @@
 'use client'
 
+import { TOKEN_ICONS } from '@/lib/constants'
+
 interface TokenSelectorProps {
   selectedToken: string
   tokens: string[]
   onTokenChange: (token: string) => void
 }
 
-const TOKEN_LOGOS: Record<string, string> = {
-  TLOS: '/tokens/TLOS.svg',
-  USDC: '/tokens/USDC.png',
-  USDT: '/tokens/USDT.png',
-  ETH: '/tokens/ETH.png',
-  WBTC: '/tokens/WBTC.png',
-  MST: '/tokens/MST.svg',
-}
+const TOKEN_LOGOS = TOKEN_ICONS
 
 export function TokenSelector({ selectedToken, tokens, onTokenChange }: TokenSelectorProps) {
   return (

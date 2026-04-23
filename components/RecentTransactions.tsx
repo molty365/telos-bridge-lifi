@@ -24,35 +24,52 @@ const STORAGE_KEY = 'telos_bridge_transactions'
 const MAX_TRANSACTIONS = 50
 
 // Chain configuration for display
-const CHAIN_CONFIG: Record<number, { name: string; icon: string; color: string }> = {
-  40: { name: 'Telos', icon: '🟣', color: 'text-purple-400' },
-  1: { name: 'Ethereum', icon: '⚫', color: 'text-blue-400' },
-  8453: { name: 'Base', icon: '🔵', color: 'text-blue-500' },
-  137: { name: 'Polygon', icon: '🟣', color: 'text-purple-500' },
-  42161: { name: 'Arbitrum', icon: '🔷', color: 'text-cyan-400' },
-  10: { name: 'Optimism', icon: '🔴', color: 'text-red-400' },
-  43114: { name: 'Avalanche', icon: '🔺', color: 'text-red-500' },
+const CHAIN_CONFIG: Record<number, { name: string; iconUrl: string }> = {
+  40: { name: 'Telos', iconUrl: '/chains/telos.png' },
+  1: { name: 'Ethereum', iconUrl: '/chains/ethereum.png' },
+  8453: { name: 'Base', iconUrl: '/chains/base.png' },
+  56: { name: 'BSC', iconUrl: '/chains/bsc.png' },
+  42161: { name: 'Arbitrum', iconUrl: '/chains/arbitrum.png' },
+  137: { name: 'Polygon', iconUrl: '/chains/polygon.png' },
+  43114: { name: 'Avalanche', iconUrl: '/chains/avalanche.png' },
+  10: { name: 'Optimism', iconUrl: '/chains/optimism.png' },
+  534352: { name: 'Scroll', iconUrl: '/chains/scroll.png' },
+  5000: { name: 'Mantle', iconUrl: '/chains/mantle.png' },
+  1329: { name: 'Sei', iconUrl: '/chains/sei.png' },
+  2222: { name: 'Kava', iconUrl: '/chains/kava.png' },
 }
 
 export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps) {
   const { reduceMotion } = useAnimation()
   const [transactions, setTransactions] = useState<BridgeTransaction[]>([])
 
-  // Load transactions from localStorage
+  // Load transactions from localStorage, auto-expiring stale pending ones
   useEffect(() => {
     if (isOpen) {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored)
-          setTransactions(parsed.slice(0, MAX_TRANSACTIONS))
-        } catch (e) {
-          console.error('Failed to parse stored transactions:', e)
-          setTransactions([])
-        }
-      }
+      loadAndExpireTransactions()
     }
   }, [isOpen])
+
+  const loadAndExpireTransactions = () => {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (!stored) return
+    try {
+      const parsed: BridgeTransaction[] = JSON.parse(stored)
+      setTransactions(parsed.slice(0, MAX_TRANSACTIONS))
+    } catch (e) {
+      console.error('Failed to parse stored transactions:', e)
+      setTransactions([])
+    }
+  }
+
+  // Listen for transaction updates (e.g. status changes from BridgeForm)
+  useEffect(() => {
+    const reload = () => {
+      loadAndExpireTransactions()
+    }
+    window.addEventListener("telos:tx-updated", reload)
+    return () => window.removeEventListener("telos:tx-updated", reload)
+  }, [])
 
   const formatTime = (timestamp: number) => {
     const now = Date.now()
@@ -72,10 +89,15 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
       1: 'https://etherscan.io',
       40: 'https://teloscan.io',
       8453: 'https://basescan.org',
+      56: 'https://bscscan.com',
       137: 'https://polygonscan.com',
       42161: 'https://arbiscan.io',
       10: 'https://optimistic.etherscan.io',
       43114: 'https://snowtrace.io',
+      534352: 'https://scrollscan.com',
+      5000: 'https://mantlescan.xyz',
+      1329: 'https://seitrace.com',
+      2222: 'https://kavascan.com',
     }
     const baseUrl = explorers[chainId] || 'https://teloscan.io'
     return `${baseUrl}/tx/${txHash}`
@@ -121,15 +143,17 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
         <div className="flex-1 overflow-y-auto">
           {transactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-8 text-center">
-              <div className="text-4xl mb-4">🌉</div>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="text-gray-600 mb-4">
+                <path d="M2 18h20M5 18V8m14 10V8M9 18v-4m6 4v-4M5 8c0-2 2-4 7-4s7 2 7 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
               <h4 className="text-gray-400 text-sm font-medium mb-2">No bridges yet</h4>
               <p className="text-gray-500 text-xs">Your bridge transactions will appear here</p>
             </div>
           ) : (
             <div className="p-4 space-y-3">
               {transactions.map((tx, index) => {
-                const fromChain = CHAIN_CONFIG[tx.fromChain] || { name: `Chain ${tx.fromChain}`, icon: '⚪', color: 'text-gray-400' }
-                const toChain = CHAIN_CONFIG[tx.toChain] || { name: `Chain ${tx.toChain}`, icon: '⚪', color: 'text-gray-400' }
+                const fromChain = CHAIN_CONFIG[tx.fromChain] || { name: `Chain ${tx.fromChain}`, iconUrl: '' }
+                const toChain = CHAIN_CONFIG[tx.toChain] || { name: `Chain ${tx.toChain}`, iconUrl: '' }
                 
                 return (
                   <div
@@ -152,8 +176,14 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
                               ? 'bg-yellow-400/10 text-yellow-400'
                               : 'bg-red-400/10 text-red-400'
                         }`}>
-                          {tx.status}
+                          {tx.status === 'pending' ? 'submitted' : tx.status}
                         </span>
+                        {tx.status === 'pending' && tx.txHash && (
+                          <a href={getExplorerUrl(tx.fromChain, tx.txHash)} target="_blank" rel="noopener noreferrer"
+                            className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors">
+                            tx link ↗
+                          </a>
+                        )}
                       </div>
                       <div className="text-xs text-gray-500">
                         {formatTime(tx.timestamp)}
@@ -162,8 +192,8 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
 
                     {/* Chain Route */}
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className={fromChain.color}>{fromChain.icon}</span>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <img src={fromChain.iconUrl} alt={fromChain.name} className="w-4 h-4 rounded-full" onError={(e) => { e.currentTarget.style.display="none" }} />
                         <span className="text-gray-400">{fromChain.name}</span>
                       </div>
                       
@@ -175,24 +205,29 @@ export function RecentTransactions({ isOpen, onClose }: RecentTransactionsProps)
                         <div className="w-4 h-0.5 bg-gray-600" />
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs">
+                      <div className="flex items-center gap-1.5 text-xs">
                         <span className="text-gray-400">{toChain.name}</span>
-                        <span className={toChain.color}>{toChain.icon}</span>
+                        <img src={toChain.iconUrl} alt={toChain.name} className="w-4 h-4 rounded-full" onError={(e) => { e.currentTarget.style.display="none" }} />
                       </div>
                     </div>
 
-                    {/* Transaction Hash */}
+                    {/* Transaction Links */}
                     {tx.txHash && (
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-500">Tx Hash</span>
-                        <a
-                          href={getExplorerUrl(tx.fromChain, tx.txHash)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-telos-cyan hover:text-telos-cyan/80 font-mono transition-colors"
-                        >
-                          {tx.txHash.slice(0, 6)}...{tx.txHash.slice(-4)} ↗
-                        </a>
+                      <div className="flex flex-col gap-1 pt-1.5 mt-1.5 border-t border-white/[0.04]">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-600">Source tx</span>
+                          <a href={getExplorerUrl(tx.fromChain, tx.txHash)} target="_blank" rel="noopener noreferrer"
+                            className="text-telos-cyan hover:text-telos-cyan/70 font-mono transition-colors">
+                            {tx.txHash.slice(0, 6)}...{tx.txHash.slice(-4)} ↗
+                          </a>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-600">LayerZero</span>
+                          <a href={`https://layerzeroscan.com/tx/${tx.txHash}`} target="_blank" rel="noopener noreferrer"
+                            className="text-purple-400 hover:text-purple-300 transition-colors">
+                            Track on LZScan ↗
+                          </a>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -257,6 +292,9 @@ export function updateTransaction(id: string, updates: Partial<BridgeTransaction
     if (index !== -1) {
       transactions[index] = { ...transactions[index], ...updates }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions))
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("telos:tx-updated"))
+      }
     }
   } catch (e) {
     console.error('Failed to update transaction:', e)

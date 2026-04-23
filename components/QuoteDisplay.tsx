@@ -3,6 +3,7 @@
 import { LoadingSpinner } from './LoadingSpinner'
 import { useCountUp } from '@/hooks/useCountUp'
 import { useAnimation } from './AnimationProvider'
+import { TOKEN_ICONS } from '@/lib/constants'
 import { useEffect, useState } from 'react'
 
 interface QuoteDisplayProps {
@@ -41,14 +42,7 @@ export function QuoteDisplay({
     preserveValue: false
   })
 
-  const TOKEN_LOGOS: Record<string, string> = {
-    TLOS: '/tokens/TLOS.svg',
-    USDC: '/tokens/USDC.png',
-    USDT: '/tokens/USDT.png',
-    ETH: '/tokens/ETH.png',
-    WBTC: '/tokens/WBTC.png',
-    MST: '/tokens/MST.svg',
-  }
+  const TOKEN_LOGOS = TOKEN_ICONS
 
   useEffect(() => {
     setIsVisible(true)
@@ -125,11 +119,17 @@ export function QuoteDisplay({
       }`}>
         <div className="flex justify-between items-center text-xs">
           <span className="text-gray-500">Route</span>
-          <div className="flex items-center gap-1.5">
-            <span className="text-telos-cyan font-medium">
-              ⚡ {isStargate ? 'Stargate (V2)' : 'LayerZero OFT'}
-            </span>
-            {isStargate && <span className="text-emerald-400 text-[10px] bg-emerald-400/10 px-1.5 py-0.5 rounded">FASTEST</span>}
+          <div className="flex items-center gap-2">
+            {isStargate ? (
+              <div className="flex items-center gap-1.5">
+                <img src="/providers/stargate.svg" alt="Stargate" className="h-4 opacity-80" />
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <img src="/providers/layerzero.svg" alt="LayerZero" className="h-3.5 opacity-80" />
+                <span className="text-white/70 text-[10px]">OFT</span>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex justify-between text-xs">
@@ -138,8 +138,8 @@ export function QuoteDisplay({
         </div>
         {nativeFee && (
           <div className="flex justify-between text-xs">
-            <span className="text-gray-500">Network fee</span>
-            <span className="text-gray-300 font-mono">{nativeFee} {feeCurrency}</span>
+            <span className="text-gray-500">Network fee <span title={`LayerZero relay fee paid in ${feeCurrency}. This is a fixed cost, not a percentage. Excess is automatically refunded after delivery.`} className="cursor-help">&#9432;</span></span>
+            <span className="text-gray-300 font-mono">{nativeFee} {feeCurrency} <span className="text-gray-500">(fixed)</span></span>
           </div>
         )}
       </div>
@@ -150,7 +150,7 @@ export function QuoteDisplay({
       }`}>
         <div className="flex-1 bg-gray-800/50 rounded-full h-1.5 overflow-hidden">
           <div className={`h-full bg-gradient-to-r from-telos-cyan to-emerald-400 rounded-full ${
-            reduceMotion ? '' : 'animate-pulse'
+            ''
           }`} style={{width: '85%'}} />
         </div>
         <span className="text-xs text-gray-500">85% savings vs alternatives</span>
